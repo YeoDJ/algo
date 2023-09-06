@@ -20,11 +20,11 @@ void rotate(int plate, int dir, int cnt) {
 }
 
 bool isSame(int y, int x) {
-    int dy[] = {-1, 1, 0, 0};
-    int dx[] = {0, 0, -1, 1};
     if (!MAP[y][x])
         return false;
 
+    int dy[] = {-1, 1, 0, 0};
+    int dx[] = {0, 0, -1, 1};
     for (int i = 0; i < 4; i++) {
         int ny = y + dy[i];
         int nx = x + dx[i];
@@ -36,19 +36,22 @@ bool isSame(int y, int x) {
 }
 
 void erase_num() {
-    int avg = 0;
+    int avg = 0, cnt = 0;
     bool isErase = false;
     vector<vector<bool>> erase_MAP(n, vector<bool>(m, false));
 
     // 1. 지울 대상 선정(인접 여부 확인)
     for (int y = 0; y < n; y++)
         for (int x = 0; x < m; x++) {
-            avg += MAP[y][x];
             if (isSame(y, x))
                 erase_MAP[y][x] = isErase = true;
+            else if (MAP[y][x]) {
+                avg += MAP[y][x];
+                cnt++;
+            }
         }
 
-    avg /= n * m;
+    avg /= (cnt <= 1) ? 1 : cnt;
     for (int y = 0; y < n; y++)
         for (int x = 0; x < m; x++)
             // 2. 지우기
