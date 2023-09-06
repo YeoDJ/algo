@@ -29,7 +29,7 @@ bool isSame(int y, int x) {
         int ny = y + dy[i];
         int nx = x + dx[i];
         nx = (nx < 0) ? 3 : (nx >= m) ? 0 : nx;
-        if (0 <= ny && ny < n && MAP[y][x] == MAP[ny][nx])
+        if (0 <= ny && ny < n && MAP[ny][nx] && MAP[y][x] == MAP[ny][nx])
             return true;
     }
     return false;
