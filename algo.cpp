@@ -4,10 +4,12 @@ using namespace std;
 
 int n, m, q, a, d, k;
 vector<vector<int>> MAP;
+vector<vector<bool>> exist_MAP;
 
 void input() {
     cin >> n >> m >> q;
     MAP = vector<vector<int>>(n, vector<int>(m));
+    exist_MAP = vector<vector<bool>>(n, vector<bool>(m, true));
     for (int y = 0; y < n; y++)
         for (int x = 0; x < m; x++)
             cin >> MAP[y][x];
@@ -15,21 +17,21 @@ void input() {
 
 void rotate(int plate, int dir, int cnt) {
     for (int i = 0; i < cnt; i++)
-        for (int j = 0; j < m - 1; j++)
+        for (int j = 0; j < m - 1; j++) {
             (dir) ? swap(MAP[plate][j], MAP[plate][j + 1]) : swap(MAP[plate][m - 1 - j], MAP[plate][m - 2 - j]);
+            (dir) ? swap(exist_MAP[plate][j], exist_MAP[plate][j + 1]) : swap(exist_MAP[plate][m - 1 - j], exist_MAP[plate][m - 2 - j]);
+        }
 }
 
 bool isSame(int y, int x) {
-    if (!MAP[y][x])
-        return false;
-
     int dy[] = {-1, 1, 0, 0};
     int dx[] = {0, 0, -1, 1};
     for (int i = 0; i < 4; i++) {
         int ny = y + dy[i];
         int nx = x + dx[i];
-        nx = (nx < 0) ? 3 : (nx >= m) ? 0 : nx;
-        if (0 <= ny && ny < n && MAP[ny][nx] && MAP[y][x] == MAP[ny][nx])
+        ny = (ny < 0) ? n - 1 : (ny >= n) ? 0 : ny;
+        nx = (nx < 0) ? m - 1 : (nx >= m) ? 0 : nx;
+        if (exist_MAP[ny][nx] && MAP[y][x] == MAP[ny][nx])
             return true;
     }
     return false;
@@ -38,27 +40,28 @@ bool isSame(int y, int x) {
 void erase_num() {
     int avg = 0, cnt = 0;
     bool isErase = false;
-    vector<vector<bool>> erase_MAP(n, vector<bool>(m, false));
 
     // 1. 지울 대상 선정(인접 여부 확인)
     for (int y = 0; y < n; y++)
         for (int x = 0; x < m; x++) {
-            if (isSame(y, x))
-                erase_MAP[y][x] = isErase = true;
-            else if (MAP[y][x]) {
+            if (exist_MAP[y][x] && isSame(y, x)) {
+                exist_MAP[y][x] = false;
+                isErase = true;
+            } else {
                 avg += MAP[y][x];
                 cnt++;
             }
         }
 
-    avg /= (cnt <= 1) ? 1 : cnt;
+    if (cnt)
+        avg /= cnt;
     for (int y = 0; y < n; y++)
         for (int x = 0; x < m; x++)
             // 2. 지우기
-            if (erase_MAP[y][x])
+            if (isErase && !exist_MAP[y][x])
                 MAP[y][x] = 0;
             // 3. 지워지는 수가 없을 때
-            else if (!isErase && MAP[y][x])
+            else if (!isErase && exist_MAP[y][x])
                 (MAP[y][x] > avg) ? MAP[y][x]-- : (MAP[y][x] < avg) ? MAP[y][x]++ : 1;
 }
 
