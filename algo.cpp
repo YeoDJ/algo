@@ -29,25 +29,25 @@ bool isSame(int y, int x) {
     for (int i = 0; i < 4; i++) {
         int ny = y + dy[i];
         int nx = x + dx[i];
-        ny = (ny < 0) ? n - 1 : (ny >= n) ? 0 : ny;
         nx = (nx < 0) ? m - 1 : (nx >= m) ? 0 : nx;
-        if (exist_MAP[ny][nx] && MAP[y][x] == MAP[ny][nx])
+        if (0 <= ny && ny < n && exist_MAP[ny][nx] && MAP[y][x] == MAP[ny][nx])
             return true;
     }
     return false;
 }
 
-void erase_num() {
+vector<vector<bool>> erase_num() {
     int avg = 0, cnt = 0;
     bool isErase = false;
+    vector<vector<bool>> v = exist_MAP;
 
     // 1. 지울 대상 선정(인접 여부 확인)
     for (int y = 0; y < n; y++)
         for (int x = 0; x < m; x++) {
             if (exist_MAP[y][x] && isSame(y, x)) {
-                exist_MAP[y][x] = false;
+                v[y][x] = false;
                 isErase = true;
-            } else {
+            } else if (exist_MAP[y][x]) {
                 avg += MAP[y][x];
                 cnt++;
             }
@@ -58,11 +58,12 @@ void erase_num() {
     for (int y = 0; y < n; y++)
         for (int x = 0; x < m; x++)
             // 2. 지우기
-            if (isErase && !exist_MAP[y][x])
+            if (isErase && !v[y][x])
                 MAP[y][x] = 0;
             // 3. 지워지는 수가 없을 때
-            else if (!isErase && exist_MAP[y][x])
+            else if (!isErase)
                 (MAP[y][x] > avg) ? MAP[y][x]-- : (MAP[y][x] < avg) ? MAP[y][x]++ : 1;
+    return v;
 }
 
 int main() {
@@ -73,7 +74,7 @@ int main() {
         cin >> a >> d >> k;
         for (int j = a - 1; j < n; j += a)
             rotate(j, d, k);
-        erase_num();
+        exist_MAP = erase_num();
     }
 
     int ans = 0;
