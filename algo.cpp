@@ -58,10 +58,8 @@ void mal_move(int y, int x, int i) {
     }
 
     int sz = tmp.size();
-    for (int j = 0; j < sz; j++) {
-        pair<int, int> insert_val = (!color_MAP[ny][nx]) ? tmp[j] : tmp[sz - 1 - j];
-        mal_MAP[ny][nx].insert(mal_MAP[ny][nx].begin(), insert_val);
-    }
+    for (int j = 0; j < sz; j++)
+        mal_MAP[ny][nx].insert(mal_MAP[ny][nx].begin(), (!color_MAP[ny][nx]) ? tmp[j] : tmp[sz - 1 - j]);
 }
 
 int main() {
