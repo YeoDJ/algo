@@ -1,93 +1,128 @@
 #include <algorithm>
 #include <iostream>
-#include <vector>
+#include <queue>
 using namespace std;
 
-// d: ¿ìÁÂ»óÇÏ
-// 0: À§¿¡ ½×´Â´Ù, 1: »¡°£ Ä­¿¡ °¡±â Àü¿¡ ¼ø¼­ ¹ÝÀü, 2: º®(°ÝÀÚ ¹Ù¿î´õ¸®¿Í °°Àº °³³ä)
-int dy[] = {0, 0, -1, 1};
-int dx[] = {1, -1, 0, 0};
-int n, k;
-vector<vector<int>> color_MAP;
-vector<vector<vector<pair<int, int>>>> mal_MAP;
+/*
+    1. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    2. ï¿½Â»ï¿½ï¿½ ï¿½ï¿½ï¿½Îºï¿½, ï¿½ï¿½ï¿½ï¿½, ï¿½Þ²ï¿½
+    3. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îºï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½
+    4. ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Æ·ï¿½ï¿½Îºï¿½, ï¿½Þ²ï¿½, ï¿½Æ·ï¿½ï¿½ï¿½
+    5. ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Æ·ï¿½ï¿½Îºï¿½, ï¿½Æ·ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+*/
+
+int dy[] = {-1, -1, 1, 1};
+int dx[] = {1, -1, -1, 1};
+int n, ans = INT32_MAX;
+vector<int> path;
+vector<vector<int>> MAP;
+
+bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
 
 void input() {
-    cin >> n >> k;
-    color_MAP = vector<vector<int>>(n, vector<int>(n));
-    mal_MAP = vector<vector<vector<pair<int, int>>>>(n, vector<vector<pair<int, int>>>(n));
+    cin >> n;
+    MAP = vector<vector<int>>(n, vector<int>(n));
     for (int i = 0; i < n; i++)
-        for (auto &&j : color_MAP[i])
+        for (auto &&j : MAP[i])
             cin >> j;
+}
 
-    for (int i = 0; i < k; i++) {
-        int y, x, d;
-        cin >> y >> x >> d;
-        mal_MAP[y - 1][x - 1].push_back({i, d - 1});
+int solution(int ny, int nx) {
+    int idx = 0, y, x;
+    pair<int, int> ggok[4];
+    vector<vector<int>> group(n, vector<int>(n, 0));
+    int g_cnt[5] = {0};
+
+    // 1. ï¿½ï¿½è¼±
+    for (auto &&i : path) {
+        for (int j = 0; j < i; j++) {
+            ny += dy[idx], nx += dx[idx];
+            group[ny][nx] = 1;
+        }
+        ggok[idx] = {ny, nx};
+        idx++;
     }
+
+    // 2. ï¿½ï¿½ ï¿½È¿ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½
+    for (y = 0; y < n; y++)
+        for (x = 0; x < n; x++)
+            if (group[y][x]) {
+                idx = distance(group[y].begin(), find(group[y].begin() + x + 1, group[y].end(), 1));
+                while (x++ != idx && idx != n)
+                    group[y][x] = 1;
+            }
+
+    // 3. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ï±ï¿½
+    for (int i = 0; i < 4; i++) {
+        switch (i) {
+        case 0:
+            for (y = ggok[i].first; y >= 0; y--)
+                for (x = (path[0] >= path[1]) ? ggok[i].second : ggok[3].second; x < n; x++)
+                    if (!group[y][x])
+                        group[y][x] = i + 2;
+            break;
+        case 1:
+            for (y = (path[0] <= path[1]) ? ggok[i].first : ggok[i - 1].first; y >= 0; y--)
+                for (x = ggok[i].second; x >= 0; x--)
+                    if (!group[y][x])
+                        group[y][x] = i + 2;
+            break;
+        case 2:
+            for (y = ggok[i].first; y < n; y++)
+                for (x = (path[0] >= path[1]) ? ggok[i].second : ggok[i - 1].second; x >= 0; x--)
+                    if (!group[y][x])
+                        group[y][x] = i + 2;
+            break;
+        case 3:
+            for (y = (path[0] <= path[1]) ? ggok[i].first : ggok[i - 1].first; y < n; y++)
+                for (x = ggok[i].second; x < n; x++)
+                    if (!group[y][x])
+                        group[y][x] = i + 2;
+            break;
+        }
+    }
+
+    // debug
+    for (int i = 0; i < n; i++) {
+        for (auto &&j : group[i]) {
+            cout << j << ' ';
+        }
+        cout << endl;
+    }
+    cout << endl;
+
+    // 4. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Î¿ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ï±ï¿½
+    for (int y = 0; y < n; y++)
+        for (int x = 0; x < n; x++)
+            g_cnt[group[y][x] - 1] += MAP[y][x];
+
+    // 5. ï¿½Î¿ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½, ï¿½Ö¼ï¿½ ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ï¿½Ï±ï¿½
+    return *max_element(g_cnt, g_cnt + 5) - *min_element(g_cnt, g_cnt + 5);
 }
 
-bool isWall(int y, int x) {
-    if (y < 0 || y >= n || x < 0 || x >= n)
-        return true;
-    return color_MAP[y][x] == 2;
-}
-
-bool isOverlap() {
-    for (int i = 0; i < n; i++)
-        for (auto &&j : mal_MAP[i])
-            if (j.size() >= 4)
-                return true;
-    return false;
-}
-
-void mal_move(int y, int x, int i) {
-    int ny = y + dy[mal_MAP[y][x][i].second];
-    int nx = x + dx[mal_MAP[y][x][i].second];
-    vector<pair<int, int>> tmp;
-    if (isWall(ny, nx))
-        (mal_MAP[y][x][i].second % 2) ? mal_MAP[y][x][i].second-- : mal_MAP[y][x][i].second++;
-
-    ny = y + dy[mal_MAP[y][x][i].second];
-    nx = x + dx[mal_MAP[y][x][i].second];
-    if (isWall(ny, nx))
+void make_path(int lvl) {
+    if (lvl == 4) {
+        if (path[0] == path[2] && path[1] == path[3]) {
+            pair<int, int> ry = {path[0] + path[1], n - 1};
+            pair<int, int> rx = {path[3], n - 1 - path[0]};
+            for (int y = ry.first; y <= ry.second; y++)
+                for (int x = rx.first; x <= rx.second; x++)
+                    ans = min(ans, solution(y, x));
+        }
         return;
-
-    for (int j = i; j >= 0; j--) {
-        tmp.push_back(mal_MAP[y][x][j]);
-        mal_MAP[y][x].erase(mal_MAP[y][x].begin() + j);
     }
 
-    int sz = tmp.size();
-    for (int j = 0; j < sz; j++)
-        mal_MAP[ny][nx].insert(mal_MAP[ny][nx].begin(), (!color_MAP[ny][nx]) ? tmp[j] : tmp[sz - 1 - j]);
+    for (int i = 1; i <= n / 2; i++) {
+        path.push_back(i);
+        make_path(lvl + 1);
+        path.pop_back();
+    }
 }
 
 int main() {
     freopen("./input.txt", "r", stdin);
     input();
-
-    int ans = 0;
-    while (!isOverlap() && ans <= 1000) {
-        ans++;
-        for (int i = 0; i < k; i++) {
-            bool flag = false;
-            for (int y = 0; y < n; y++) {
-                for (int x = 0; x < n; x++) {
-                    auto it = find_if(mal_MAP[y][x].begin(), mal_MAP[y][x].end(), [i](const pair<int, int> &element) { return element.first == i; });
-                    if (flag = it != mal_MAP[y][x].end()) {
-                        mal_move(y, x, distance(mal_MAP[y][x].begin(), it));
-                        break;
-                    }
-                }
-                if (flag)
-                    break;
-            }
-            if (isOverlap())
-                break;
-        }
-    }
-
-    ans = (ans >= 1000) ? -1 : ans;
+    make_path(0);
     cout << ans;
     return 0;
 }
