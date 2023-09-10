@@ -57,24 +57,24 @@ int solution(int ny, int nx) {
         switch (i) {
         case 0:
             for (y = ggok[i].first; y >= 0; y--)
-                for (x = ggok[3].second; x < n; x++)
+                for (x = (path[0] >= path[1]) ? ggok[i].second : ggok[3].second; x < n; x++)
                     if (!group[y][x])
                         group[y][x] = i + 2;
             break;
         case 1:
-            for (y = ggok[i].first; y >= 0; y--)
+            for (y = (path[0] <= path[1]) ? ggok[i].first : ggok[i - 1].first; y >= 0; y--)
                 for (x = ggok[i].second; x >= 0; x--)
                     if (!group[y][x])
                         group[y][x] = i + 2;
             break;
         case 2:
             for (y = ggok[i].first; y < n; y++)
-                for (x = ggok[i - 1].second; x >= 0; x--)
+                for (x = (path[0] >= path[1]) ? ggok[i].second : ggok[i - 1].second; x >= 0; x--)
                     if (!group[y][x])
                         group[y][x] = i + 2;
             break;
         case 3:
-            for (y = ggok[i].first; y < n; y++)
+            for (y = (path[0] <= path[1]) ? ggok[i].first : ggok[i - 1].first; y < n; y++)
                 for (x = ggok[i].second; x < n; x++)
                     if (!group[y][x])
                         group[y][x] = i + 2;
@@ -83,8 +83,8 @@ int solution(int ny, int nx) {
     }
 
     // debug
-    for (int k = 0; k < n; k++) {
-        for (auto &&j : group[k]) {
+    for (int i = 0; i < n; i++) {
+        for (auto &&j : group[i]) {
             cout << j << ' ';
         }
         cout << endl;
