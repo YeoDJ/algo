@@ -11,3 +11,5 @@ lpCurrentDirectory: 현재 디렉토리를 지정합니다. 이 매개변수는 
 lpStartupInfo: 프로세스 시작 정보를 지정합니다. 이 매개변수는 NULL일 수 없습니다.
 lpProcessInformation: 프로세스 정보를 받습니다. 이 매개변수는 NULL일 수 없습니다.
 CreateProcess() 함수는 프로세스를 생성하고, 프로세스 정보를 lpProcessInformation 매개변수에 저장합니다 이후에는 ResumeThread() 함수를 사용하여세스를 실행할 수 있습니다.
+
+http://12.127.123.122:9060/AttachFiles/202309/2023.08.22%20SPT809%20CBM%20PM_12_1087.pdf
