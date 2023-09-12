@@ -32,18 +32,16 @@ mold findMaxSize(int y, int x) {
     return md;
 }
 
-void solution(int y, int x) {
-    // 1. 채취
-    mold target = MAP[y][x][0];
-    ans += target.sz;
-    MAP[y][x].pop_back();
+void solution() {
+    int y, x;
+    vector<vector<vector<mold>>> tmp_MAP(n, vector<vector<mold>>(m));
 
     // 2. 이동하기
     for (y = 0; y < n; y++)
         for (x = 0; x < m; x++)
             if (MAP[y][x].size()) {
                 int ey = y, ex = x;
-                for (int i = 0; i < target.vel; i++) {
+                for (int i = 0; i < MAP[y][x][0].vel; i++) {
                     ey += dy[MAP[y][x][0].dir];
                     ex += dx[MAP[y][x][0].dir];
                     if (!inRange(ey, ex)) {
@@ -52,18 +50,18 @@ void solution(int y, int x) {
                         ex += dx[MAP[y][x][0].dir] * 2;
                     }
                 }
-                MAP[ey][ex].push_back(MAP[y][x][0]);
+                tmp_MAP[ey][ex].push_back(MAP[y][x][0]);
                 MAP[y][x].pop_back();
             }
+    MAP = tmp_MAP;
 
     // 3. 잡아먹기
     for (y = 0; y < n; y++)
         for (x = 0; x < m; x++)
             if (MAP[y][x].size() > 1) {
-                target = findMaxSize(y, x);
-                for (int i = 0; i < MAP[y][x].size(); i++)
-                    if (MAP[y][x][i].sz != target.sz)
-                        MAP[y][x].erase(MAP[y][x].begin(), MAP[y][x].begin() + i);
+                mold target = findMaxSize(y, x);
+                MAP[y][x].clear();
+                MAP[y][x].push_back(target);
             }
 }
 
@@ -71,12 +69,17 @@ int main() {
     freopen("./input.txt", "r", stdin);
     input();
 
-    for (int x = 0; x < m; x++)
+    for (int x = 0; x < m; x++) {
         for (int y = 0; y < n; y++)
             if (MAP[y][x].size()) {
-                solution(y, x);
+                // 1. 채취
+                ans += MAP[y][x][0].sz;
+                MAP[y][x].pop_back();
                 break;
             }
+        solution();
+    }
 
+    cout << ans;
     return 0;
 }
