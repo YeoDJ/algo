@@ -3,90 +3,91 @@
 #include <queue>
 using namespace std;
 
-struct mold {
-    int y, x;
-    int vel, dir, sz;
-};
+int dy[] = {-1, -1, 0, 1, 1, 1, 0, -1};
+int dx[] = {0, 1, 1, 1, 0, -1, -1, -1};
+int n, m, k;
+vector<vector<int>> food, plus_food;
+vector<vector<vector<int>>> virus;
 
-int dy[] = {-1, 1, 0, 0};
-int dx[] = {0, 0, 1, -1};
-int n, m, k, ans = 0;
-vector<mold> arr;
-
-bool compare(mold m1, mold m2) {
-    if (m1.y == m2.y) {
-        if (m1.x == m2.x)
-            return m1.sz < m2.sz;
-        return m1.x < m2.x;
-    }
-    return m1.y < m2.y;
-}
+bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
 
 void input() {
     cin >> n >> m >> k;
-    for (int i = 0; i < k; i++) {
-        int x, y, s, d, b;
-        cin >> x >> y >> s >> d >> b;
-        MAP[x - 1][y - 1].push_back({s, d - 1, b});
+    food = vector<vector<int>>(n, vector<int>(n, 5));
+    plus_food = food;
+    virus = vector<vector<vector<int>>>(n, vector<vector<int>>(n));
+
+    for (int i = 0; i < n; i++)
+        for (auto &&j : plus_food[i])
+            cin >> j;
+    for (int i = 0; i < m; i++) {
+        int y, x, age;
+        cin >> y >> x >> age;
+        virus[y - 1][x - 1].push_back(age);
     }
 }
 
-mold findMaxSize(int y, int x) {
-    mold md = MAP[y][x][0];
-    for (auto &&i : MAP[y][x])
-        if (md.sz < i.sz)
-            md = i;
-    return md;
+void sort_virus() {
+    // virus[0]이 가장 나이 많은 바이러스
+    for (int i = 0; i < n; i++)
+        for (auto &&j : virus[i])
+            if (j.size())
+                sort(j.begin(), j.end());
 }
 
-void solution() {
-    int y, x;
-    vector<vector<vector<mold>>> tmp_MAP(n, vector<vector<mold>>(m));
+void food_algo() {
+    for (int y = 0; y < n; y++)
+        for (int x = 0; x < n; x++) {
+            int i, sz = virus[y][x].size();
+            // 어린 바이러스부터 양분 섭취, 본인 나이만큼 먹기
+            for (i = 0; i < sz; i++)
+                if (virus[y][x][i] <= food[y][x])
+                    food[y][x] -= virus[y][x][i]++;
+                else
+                    break;
 
-    // 2. ??????
-    for (y = 0; y < n; y++)
-        for (x = 0; x < m; x++)
-            if (MAP[y][x].size()) {
-                int ey = y, ex = x;
-                for (int i = 0; i < MAP[y][x][0].vel; i++) {
-                    ey += dy[MAP[y][x][0].dir];
-                    ex += dx[MAP[y][x][0].dir];
-                    if (!inRange(ey, ex)) {
-                        MAP[y][x][0].dir += (MAP[y][x][0].dir % 2) ? -1 : 1;
-                        ey += dy[MAP[y][x][0].dir] * 2;
-                        ex += dx[MAP[y][x][0].dir] * 2;
-                    }
-                }
-                tmp_MAP[ey][ex].push_back(MAP[y][x][0]);
-                MAP[y][x].pop_back();
+            // 죽은 바이러스 / 2만큼 양분 추가 후 소멸
+            for (int j = sz - 1; j >= i; j--) {
+                food[y][x] += virus[y][x][j] / 2;
+                virus[y][x].pop_back();
             }
-    MAP = tmp_MAP;
+        }
+}
 
-    // 3. ?????
-    for (y = 0; y < n; y++)
-        for (x = 0; x < m; x++)
-            if (MAP[y][x].size() > 1) {
-                mold target = findMaxSize(y, x);
-                MAP[y][x].clear();
-                MAP[y][x].push_back(target);
-            }
+void virus_algo(int y, int x) {
+    for (int i = 0; i < 8; i++) {
+        int ny = y + dy[i];
+        int nx = x + dx[i];
+        if (inRange(ny, nx))
+            virus[ny][nx].push_back(1);
+    }
 }
 
 int main() {
     freopen("./input.txt", "r", stdin);
     input();
 
-    for (int x = 0; x < m; x++) {
+    for (int i = 0; i < k; i++) {
+        sort_virus();
+        food_algo();
+
+        // 번식
         for (int y = 0; y < n; y++)
-            if (MAP[y][x].size()) {
-                // 1. ???
-                ans += MAP[y][x][0].sz;
-                MAP[y][x].pop_back();
-                break;
-            }
-        solution();
+            for (int x = 0; x < n; x++)
+                for (int i = 0; i < virus[y][x].size(); i++)
+                    if (!(virus[y][x][i] % 5))
+                        virus_algo(y, x);
+
+        // 양분 추가
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+                food[y][x] += plus_food[y][x];
     }
 
+    int ans = 0;
+    for (int i = 0; i < n; i++)
+        for (auto &&j : virus[i])
+            ans += j.size();
     cout << ans;
     return 0;
 }
