@@ -58,13 +58,38 @@ void move_player() {
 
 void rotate_MAP() {
     sort(player.begin(), player.end());
-    int min_len = n;
-    pair<int, int> min_p = player[0];
+    int min_len = n, y, x;
+    vector<vector<int>> tmp_MAP = MAP;
+    vector<pair<int, int>> tmp_player = player;
+    pair<int, int> p = player[0];
 
-    // 출구를 기준으로 영역을 잡는다.
+    // 출구를 기준으로 영역의 크기를 구한다.
     for (auto &&i : player) {
         int len = max(abs(exit_p.first - i.first), abs(exit_p.second - i.second)) + 1;
+        if (len < min_len) {
+            min_len = len;
+            p = i;
+        }
     }
+
+    // 좌상단 좌표를 구한다.(y, x 순서대로)
+    p.first = (p.first - min_len < 0) ? 0 : abs(p.first - exit_p.first);
+    p.second = (p.second - min_len < 0) ? 0 : abs(p.second - exit_p.second);
+
+    // 회전
+    for (y = p.first; y < p.first + min_len; y++)
+        for (x = p.second; x < p.second + min_len; x++) {
+            pair<int, int> nyam = {y, x};
+            auto it = find(tmp_player.begin(), tmp_player.end(), nyam);
+            MAP[p.first + min_len - x][y] = tmp_MAP[y][x];
+            if (MAP[y][x] == -1)
+                exit_p = {y, x};
+            if (it != tmp_player.end()) {
+                int dist = distance(tmp_player.begin(), it);
+                player[dist].first = p.first + min_len - tmp_player[dist].first;
+                player[dist].second = p.second + min_len - tmp_player[dist].second;
+            }
+        }
 }
 
 int main() {
