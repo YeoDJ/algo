@@ -81,13 +81,13 @@ void rotate_MAP() {
         for (x = p.second; x < p.second + min_len; x++) {
             pair<int, int> nyam = {y, x};
             auto it = find(tmp_player.begin(), tmp_player.end(), nyam);
-            MAP[p.first + min_len - x][y] = tmp_MAP[y][x];
-            if (MAP[y][x] == -1)
+            MAP[p.first + min_len - x - 1][y] = tmp_MAP[y][x];
+            if (MAP[p.first + min_len - x - 1][y] == -1)
                 exit_p = {y, x};
             if (it != tmp_player.end()) {
                 int dist = distance(tmp_player.begin(), it);
-                player[dist].first = p.first + min_len - tmp_player[dist].first;
-                player[dist].second = p.second + min_len - tmp_player[dist].second;
+                player[dist].first = p.first + min_len - tmp_player[dist].first - 1;
+                player[dist].second = p.second + min_len - tmp_player[dist].second - 1;
             }
         }
 }
