@@ -76,28 +76,19 @@ void rotate_MAP() {
     p.second = (max(p.second, exit_p.second) - min_len < 0) ? 0 : abs(p.second - exit_p.second);
 
     // 회전(MAP)
-    for (y = p.first; y < p.first + min_len; y++)
-        for (x = p.second; x < p.second + min_len; x++)
-            tmp_MAP[x + p.first][p.second + min_len - 1 - y] = MAP[y][x];
+    for (y = 0; y < min_len; y++)
+        for (x = 0; x < min_len; x++)
+            tmp_MAP[x + p.first][p.second + min_len - 1 - y] = MAP[y + p.first][x + p.second];
     MAP = tmp_MAP;
 
-    // debug
-    for (int i = 0; i < n; i++) {
-        for (auto &&j : MAP[i]) {
-            cout << j << ' ';
-        }
-        cout << endl;
-    }
-    cout << endl;
-
     // 회전(player)
-    for (y = p.first; y < p.first + min_len; y++)
-        for (x = p.second; x < p.second + min_len; x++) {
-            pair<int, int> nyam = {y, x};
+    for (y = 0; y < min_len; y++)
+        for (x = 0; x < min_len; x++) {
+            pair<int, int> nyam = {y + p.first, x + p.second};
             auto it = find(player.begin(), player.end(), nyam);
             if (it != player.end()) {
                 int dist = distance(player.begin(), it);
-                tmp_player[dist].first = x;
+                tmp_player[dist].first = x + p.first;
                 tmp_player[dist].second = p.second + min_len - 1 - y;
             }
         }
@@ -122,14 +113,6 @@ int main() {
         if (player.empty())
             break;
         rotate_MAP();
-        // debug
-        for (int i = 0; i < n; i++) {
-            for (auto &&j : MAP[i]) {
-                cout << j << ' ';
-            }
-            cout << endl;
-        }
-        cout << endl;
     }
     cout << ans << endl << exit_p.first << ' ' << exit_p.second;
     return 0;
