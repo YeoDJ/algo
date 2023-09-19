@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <iostream>
 #include <queue>
-#include <tuple>
 using namespace std;
 
 // 도착점을 -1로 한다.
@@ -73,22 +72,44 @@ void rotate_MAP() {
     }
 
     // 좌상단 좌표를 구한다.(y, x 순서대로)
-    p.first = (p.first - min_len < 0) ? 0 : abs(p.first - exit_p.first);
-    p.second = (p.second - min_len < 0) ? 0 : abs(p.second - exit_p.second);
+    p.first = (max(p.first, exit_p.first) - min_len < 0) ? 0 : abs(p.first - exit_p.first);
+    p.second = (max(p.second, exit_p.second) - min_len < 0) ? 0 : abs(p.second - exit_p.second);
 
-    // 회전
+    // 회전(MAP)
+    for (y = p.first; y < p.first + min_len; y++)
+        for (x = p.second; x < p.second + min_len; x++)
+            tmp_MAP[x + p.first][p.second + min_len - 1 - y] = MAP[y][x];
+    MAP = tmp_MAP;
+
+    // debug
+    for (int i = 0; i < n; i++) {
+        for (auto &&j : MAP[i]) {
+            cout << j << ' ';
+        }
+        cout << endl;
+    }
+    cout << endl;
+
+    // 회전(player)
     for (y = p.first; y < p.first + min_len; y++)
         for (x = p.second; x < p.second + min_len; x++) {
             pair<int, int> nyam = {y, x};
-            auto it = find(tmp_player.begin(), tmp_player.end(), nyam);
-            MAP[p.first + min_len - x - 1][y] = tmp_MAP[y][x];
-            if (MAP[p.first + min_len - x - 1][y] == -1)
-                exit_p = {y, x};
-            if (it != tmp_player.end()) {
-                int dist = distance(tmp_player.begin(), it);
-                player[dist].first = p.first + min_len - tmp_player[dist].first - 1;
-                player[dist].second = p.second + min_len - tmp_player[dist].second - 1;
+            auto it = find(player.begin(), player.end(), nyam);
+            if (it != player.end()) {
+                int dist = distance(player.begin(), it);
+                tmp_player[dist].first = x;
+                tmp_player[dist].second = p.second + min_len - 1 - y;
             }
+        }
+    player = tmp_player;
+
+    // 벽 깎기
+    for (y = p.first; y < p.first + min_len; y++)
+        for (x = p.second; x < p.second + min_len; x++) {
+            if (MAP[y][x] == -1)
+                exit_p = {y, x};
+            if (MAP[y][x] > 0)
+                MAP[y][x]--;
         }
 }
 
@@ -101,6 +122,14 @@ int main() {
         if (player.empty())
             break;
         rotate_MAP();
+        // debug
+        for (int i = 0; i < n; i++) {
+            for (auto &&j : MAP[i]) {
+                cout << j << ' ';
+            }
+            cout << endl;
+        }
+        cout << endl;
     }
     cout << ans << endl << exit_p.first << ' ' << exit_p.second;
     return 0;
