@@ -11,7 +11,8 @@ pair<int, int> exit_p;
 vector<vector<int>> MAP;
 vector<pair<int, int>> player;
 
-bool inRange(int y, int x) { return (0 <= y && y < n && 0 <= x && x < n) && !MAP[y][x]; }
+// 격자 안 & 벽이 아니라면 true
+bool inRange(int y, int x) { return (0 <= y && y < n && 0 <= x && x < n) && MAP[y][x] <= 0; }
 
 void input() {
     cin >> n >> m >> k;
@@ -31,20 +32,33 @@ void input() {
 }
 
 void move_player() {
-    int i = 0;
+    int i = 0, min_len, len, ny, nx;
+    pair<int, int> min_p;
+
     while (i < player.size()) {
-        int min_len = INT32_MAX;
-        pair<int, int> min_p = player[i];
+        min_len = INT32_MAX;
+        min_p = player[i];
+
+        // 출구와 가장 가까운 거리 & 그 좌표로 움직일 수 있는가?
         for (int dir = 0; dir < 4; dir++) {
-            int ny = player[i].first + dy[dir];
-            int nx = player[i].second + dx[dir];
-            int len = abs(exit_p.first - ny) + abs(exit_p.second - nx);
-            if (len < min_len) {
-                min_len = len;
+            ny = player[i].first + dy[dir];
+            nx = player[i].second + dx[dir];
+            len = abs(exit_p.first - ny) + abs(exit_p.second - nx);
+            min_len = min(min_len, len);
+        }
+
+        for (int dir = 0; dir < 4; dir++) {
+            ny = player[i].first + dy[dir];
+            nx = player[i].second + dx[dir];
+            len = abs(exit_p.first - ny) + abs(exit_p.second - nx);
+            if (len == min_len && inRange(ny, nx)) {
                 min_p = {ny, nx};
+                break;
             }
         }
-        if (inRange(min_p.first, min_p.second)) {
+
+        // player가 움직였다면?
+        if (min_p != player[i]) {
             ans++;
             if (min_p == exit_p)
                 player.erase(player.begin() + i--);
@@ -55,25 +69,35 @@ void move_player() {
     }
 }
 
+bool compare(pair<int, int> p1, pair<int, int> p2) {
+    if (p1.first == p2.first)
+        return p1.second < p2.second;
+    return p1.first < p2.first;
+}
+
 void rotate_MAP() {
-    sort(player.begin(), player.end());
     int min_len = n, y, x;
+    vector<int> len_arr;
     vector<vector<int>> tmp_MAP = MAP;
     vector<pair<int, int>> tmp_player = player;
-    pair<int, int> p = player[0];
+    pair<int, int> p = {n, n}, tmp_p, abs_p;
 
     // 출구를 기준으로 영역의 크기를 구한다.
-    for (auto &&i : player) {
-        int len = max(abs(exit_p.first - i.first), abs(exit_p.second - i.second)) + 1;
-        if (len < min_len) {
-            min_len = len;
-            p = i;
-        }
-    }
+    for (auto &&i : player)
+        len_arr.push_back(max(abs(i.first - exit_p.first) + 1, abs(i.second - exit_p.second) + 1));
+    min_len = *min_element(len_arr.begin(), len_arr.end());
 
     // 좌상단 좌표를 구한다.(y, x 순서대로)
-    p.first = (max(p.first, exit_p.first) - min_len < 0) ? 0 : abs(p.first - exit_p.first);
-    p.second = (max(p.second, exit_p.second) - min_len < 0) ? 0 : abs(p.second - exit_p.second);
+    for (int i = 0; i < player.size(); i++)
+        if (len_arr[i] == min_len) {
+            // 가로 기준(false) or 세로 기준(true)
+            bool flag = abs(player[i].first - exit_p.first) + 1 == min_len;
+            tmp_p = {max(player[i].first, exit_p.first) - min_len + 1, max(player[i].second, exit_p.second) - min_len + 1};
+            tmp_p.first = (flag) ? min(player[i].first, exit_p.first) : (tmp_p.first < 0) ? 0 : (tmp_p.first >= n - min_len) ? n - min_len : tmp_p.first;
+            tmp_p.second = (!flag) ? min(player[i].second, exit_p.second) : (tmp_p.second < 0) ? 0 : (tmp_p.second >= n - min_len) ? n - min_len : tmp_p.second;
+            if (compare(tmp_p, p))
+                p = tmp_p;
+        }
 
     // 회전(MAP)
     for (y = 0; y < min_len; y++)
@@ -81,20 +105,7 @@ void rotate_MAP() {
             tmp_MAP[x + p.first][p.second + min_len - 1 - y] = MAP[y + p.first][x + p.second];
     MAP = tmp_MAP;
 
-    // 회전(player)
-    for (y = 0; y < min_len; y++)
-        for (x = 0; x < min_len; x++) {
-            pair<int, int> nyam = {y + p.first, x + p.second};
-            auto it = find(player.begin(), player.end(), nyam);
-            if (it != player.end()) {
-                int dist = distance(player.begin(), it);
-                tmp_player[dist].first = x + p.first;
-                tmp_player[dist].second = p.second + min_len - 1 - y;
-            }
-        }
-    player = tmp_player;
-
-    // 벽 깎기
+    // 후 벽 깎기
     for (y = p.first; y < p.first + min_len; y++)
         for (x = p.second; x < p.second + min_len; x++) {
             if (MAP[y][x] == -1)
@@ -102,6 +113,18 @@ void rotate_MAP() {
             if (MAP[y][x] > 0)
                 MAP[y][x]--;
         }
+
+    // 회전(player)
+    for (y = 0; y < min_len; y++)
+        for (x = 0; x < min_len; x++) {
+            tmp_p = {y + p.first, x + p.second};
+            for (int i = 0; i < player.size(); i++)
+                if (player[i] == tmp_p) {
+                    tmp_player[i].first = x + p.first;
+                    tmp_player[i].second = p.second + min_len - 1 - y;
+                }
+        }
+    player = tmp_player;
 }
 
 int main() {
@@ -114,6 +137,6 @@ int main() {
             break;
         rotate_MAP();
     }
-    cout << ans << endl << exit_p.first << ' ' << exit_p.second;
+    cout << ans << endl << ++exit_p.first << ' ' << ++exit_p.second;
     return 0;
 }
