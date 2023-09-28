@@ -3,7 +3,7 @@
 #include <queue>
 using namespace std;
 
-// µµÂøÁ¡À» -1·Î ÇÑ´Ù.
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -1ï¿½ï¿½ ï¿½Ñ´ï¿½.
 int dy[] = {-1, 1, 0, 0};
 int dx[] = {0, 0, -1, 1};
 int n, m, k, ans = 0;
@@ -11,7 +11,7 @@ pair<int, int> exit_p;
 vector<vector<int>> MAP;
 vector<pair<int, int>> player;
 
-// °ÝÀÚ ¾È & º®ÀÌ ¾Æ´Ï¶ó¸é true
+// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ & ï¿½ï¿½ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ï¿½ true
 bool inRange(int y, int x) { return (0 <= y && y < n && 0 <= x && x < n) && MAP[y][x] <= 0; }
 
 void input() {
@@ -39,7 +39,7 @@ void move_player() {
         min_len = INT32_MAX;
         min_p = player[i];
 
-        // Ãâ±¸¿Í °¡Àå °¡±î¿î °Å¸® & ±× ÁÂÇ¥·Î ¿òÁ÷ÀÏ ¼ö ÀÖ´Â°¡?
+        // ï¿½â±¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Å¸ï¿½ & ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´Â°ï¿½?
         for (int dir = 0; dir < 4; dir++) {
             ny = player[i].first + dy[dir];
             nx = player[i].second + dx[dir];
@@ -57,7 +57,7 @@ void move_player() {
             }
         }
 
-        // player°¡ ¿òÁ÷¿´´Ù¸é?
+        // playerï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¸ï¿½?
         if (min_p != player[i]) {
             ans++;
             if (min_p == exit_p)
@@ -82,15 +82,15 @@ void rotate_MAP() {
     vector<pair<int, int>> tmp_player = player;
     pair<int, int> p = {n, n}, tmp_p, abs_p;
 
-    // Ãâ±¸¸¦ ±âÁØÀ¸·Î ¿µ¿ªÀÇ Å©±â¸¦ ±¸ÇÑ´Ù.
+    // ï¿½â±¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å©ï¿½â¸¦ ï¿½ï¿½ï¿½Ñ´ï¿½.
     for (auto &&i : player)
         len_arr.push_back(max(abs(i.first - exit_p.first) + 1, abs(i.second - exit_p.second) + 1));
     min_len = *min_element(len_arr.begin(), len_arr.end());
 
-    // ÁÂ»ó´Ü ÁÂÇ¥¸¦ ±¸ÇÑ´Ù.(y, x ¼ø¼­´ë·Î)
+    // ï¿½Â»ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½ï¿½Ñ´ï¿½.(y, x ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
     for (int i = 0; i < player.size(); i++)
         if (len_arr[i] == min_len) {
-            // °¡·Î ±âÁØ(false) or ¼¼·Î ±âÁØ(true)
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(false) or ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(true)
             bool flag = abs(player[i].first - exit_p.first) + 1 == min_len;
             tmp_p = {max(player[i].first, exit_p.first) - min_len + 1, max(player[i].second, exit_p.second) - min_len + 1};
             tmp_p.first = (flag) ? min(player[i].first, exit_p.first) : (tmp_p.first < 0) ? 0 : (tmp_p.first >= n - min_len) ? n - min_len : tmp_p.first;
@@ -99,13 +99,13 @@ void rotate_MAP() {
                 p = tmp_p;
         }
 
-    // È¸Àü(MAP)
+    // È¸ï¿½ï¿½(MAP)
     for (y = 0; y < min_len; y++)
         for (x = 0; x < min_len; x++)
             tmp_MAP[x + p.first][p.second + min_len - 1 - y] = MAP[y + p.first][x + p.second];
     MAP = tmp_MAP;
 
-    // ÈÄ º® ±ð±â
+    // ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½
     for (y = p.first; y < p.first + min_len; y++)
         for (x = p.second; x < p.second + min_len; x++) {
             if (MAP[y][x] == -1)
@@ -114,7 +114,7 @@ void rotate_MAP() {
                 MAP[y][x]--;
         }
 
-    // È¸Àü(player)
+    // È¸ï¿½ï¿½(player)
     for (y = 0; y < min_len; y++)
         for (x = 0; x < min_len; x++) {
             tmp_p = {y + p.first, x + p.second};
@@ -128,15 +128,6 @@ void rotate_MAP() {
 }
 
 int main() {
-    freopen("./input.txt", "r", stdin);
     input();
-
-    for (int i = 0; i < k; i++) {
-        move_player();
-        if (player.empty())
-            break;
-        rotate_MAP();
-    }
-    cout << ans << endl << ++exit_p.first << ' ' << ++exit_p.second;
     return 0;
 }
