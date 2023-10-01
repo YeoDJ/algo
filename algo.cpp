@@ -3,131 +3,131 @@
 #include <queue>
 using namespace std;
 
-// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -1ï¿½ï¿½ ï¿½Ñ´ï¿½.
-int dy[] = {-1, 1, 0, 0};
-int dx[] = {0, 0, -1, 1};
-int n, m, k, ans = 0;
-pair<int, int> exit_p;
-vector<vector<int>> MAP;
-vector<pair<int, int>> player;
+// 0: ±æ, 1: º£ÀÌ½ºÄ·ÇÁ, 2: ÆíÀÇÁ¡ µµÂø
+int dy[] = {-1, 0, 0, 1};
+int dx[] = {0, -1, 1, 0};
+int n, m, ans = 0;
+vector<vector<int>> MAP, wall;
 
-// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ & ï¿½ï¿½ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ï¿½ true
-bool inRange(int y, int x) { return (0 <= y && y < n && 0 <= x && x < n) && MAP[y][x] <= 0; }
+// ÇöÀç ¼Õ³ðÀÌ ÀÖ´Â °÷, ¼Õ³ðÀÌ °¥ ¸ñÀûÁö
+vector<pair<int, int>> man, dest;
+// ÆíÀÇÁ¡À» Ã£À¸·¯ ÅõÀÔµÇ¾ú´Â°¡?
+vector<bool> isMan;
+
+bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n && !wall[y][x]; }
 
 void input() {
-    cin >> n >> m >> k;
+    cin >> n >> m;
     MAP = vector<vector<int>>(n, vector<int>(n, 0));
+    wall = MAP;
+    dest = vector<pair<int, int>>(m, {n, n});
+    man = dest;
+    isMan = vector<bool>(m, false);
 
     for (int i = 0; i < n; i++)
         for (auto &&j : MAP[i])
             cin >> j;
-    for (int i = 0; i < m; i++) {
-        int y, x;
-        cin >> y >> x;
-        player.push_back({--y, --x});
+    for (auto &&i : dest) {
+        cin >> i.first >> i.second;
+        i.first--, i.second--;
     }
-
-    cin >> exit_p.first >> exit_p.second;
-    MAP[--exit_p.first][--exit_p.second] = -1;
 }
 
-void move_player() {
-    int i = 0, min_len, len, ny, nx;
-    pair<int, int> min_p;
+int bfs(pair<int, int> p, int idx) {
+    queue<pair<int, int>> q;
+    vector<vector<int>> used(n, vector<int>(n, 0));
+    vector<vector<int>> dist = used;
+    q.push(p);
 
-    while (i < player.size()) {
-        min_len = INT32_MAX;
-        min_p = player[i];
+    while (!q.empty()) {
+        pair<int, int> cur = q.front();
+        q.pop();
 
-        // ï¿½â±¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Å¸ï¿½ & ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´Â°ï¿½?
-        for (int dir = 0; dir < 4; dir++) {
-            ny = player[i].first + dy[dir];
-            nx = player[i].second + dx[dir];
-            len = abs(exit_p.first - ny) + abs(exit_p.second - nx);
-            min_len = min(min_len, len);
+        for (int i = 0; i < 4; i++) {
+            int y = cur.first + dy[i];
+            int x = cur.second + dx[i];
+            if (inRange(y, x) && !used[y][x]) {
+                used[y][x] = 1;
+                dist[y][x] = dist[cur.first][cur.second] + 1;
+                q.push({y, x});
+            }
+            if (cur == dest[idx])
+                return dist[cur.first][cur.second];
         }
+    }
 
-        for (int dir = 0; dir < 4; dir++) {
-            ny = player[i].first + dy[dir];
-            nx = player[i].second + dx[dir];
-            len = abs(exit_p.first - ny) + abs(exit_p.second - nx);
-            if (len == min_len && inRange(ny, nx)) {
-                min_p = {ny, nx};
-                break;
+    return n * n;
+}
+
+pair<int, int> move(int p) {
+    pair<int, int> ans = man[p];
+    int min_len = n * n;
+
+    for (int i = 0; i < 4; i++) {
+        int y = man[p].first + dy[i];
+        int x = man[p].second + dx[i];
+        if (inRange(y, x)) {
+            int len = bfs({y, x}, p);
+            if (len < min_len) {
+                min_len = len;
+                ans = {y, x};
             }
         }
-
-        // playerï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¸ï¿½?
-        if (min_p != player[i]) {
-            ans++;
-            if (min_p == exit_p)
-                player.erase(player.begin() + i--);
-            else
-                player[i] = min_p;
-        }
-        i++;
     }
+    return ans;
 }
 
-bool compare(pair<int, int> p1, pair<int, int> p2) {
-    if (p1.first == p2.first)
-        return p1.second < p2.second;
-    return p1.first < p2.first;
-}
+pair<int, int> set_person(int p) {
+    pair<int, int> ans = man[p];
+    int min_len = n * n;
 
-void rotate_MAP() {
-    int min_len = n, y, x;
-    vector<int> len_arr;
-    vector<vector<int>> tmp_MAP = MAP;
-    vector<pair<int, int>> tmp_player = player;
-    pair<int, int> p = {n, n}, tmp_p, abs_p;
-
-    // ï¿½â±¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å©ï¿½â¸¦ ï¿½ï¿½ï¿½Ñ´ï¿½.
-    for (auto &&i : player)
-        len_arr.push_back(max(abs(i.first - exit_p.first) + 1, abs(i.second - exit_p.second) + 1));
-    min_len = *min_element(len_arr.begin(), len_arr.end());
-
-    // ï¿½Â»ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½ï¿½Ñ´ï¿½.(y, x ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
-    for (int i = 0; i < player.size(); i++)
-        if (len_arr[i] == min_len) {
-            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(false) or ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(true)
-            bool flag = abs(player[i].first - exit_p.first) + 1 == min_len;
-            tmp_p = {max(player[i].first, exit_p.first) - min_len + 1, max(player[i].second, exit_p.second) - min_len + 1};
-            tmp_p.first = (flag) ? min(player[i].first, exit_p.first) : (tmp_p.first < 0) ? 0 : (tmp_p.first >= n - min_len) ? n - min_len : tmp_p.first;
-            tmp_p.second = (!flag) ? min(player[i].second, exit_p.second) : (tmp_p.second < 0) ? 0 : (tmp_p.second >= n - min_len) ? n - min_len : tmp_p.second;
-            if (compare(tmp_p, p))
-                p = tmp_p;
-        }
-
-    // È¸ï¿½ï¿½(MAP)
-    for (y = 0; y < min_len; y++)
-        for (x = 0; x < min_len; x++)
-            tmp_MAP[x + p.first][p.second + min_len - 1 - y] = MAP[y + p.first][x + p.second];
-    MAP = tmp_MAP;
-
-    // ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½
-    for (y = p.first; y < p.first + min_len; y++)
-        for (x = p.second; x < p.second + min_len; x++) {
-            if (MAP[y][x] == -1)
-                exit_p = {y, x};
-            if (MAP[y][x] > 0)
-                MAP[y][x]--;
-        }
-
-    // È¸ï¿½ï¿½(player)
-    for (y = 0; y < min_len; y++)
-        for (x = 0; x < min_len; x++) {
-            tmp_p = {y + p.first, x + p.second};
-            for (int i = 0; i < player.size(); i++)
-                if (player[i] == tmp_p) {
-                    tmp_player[i].first = x + p.first;
-                    tmp_player[i].second = p.second + min_len - 1 - y;
+    for (int y = 0; y < n; y++)
+        for (int x = 0; x < n; x++)
+            if (inRange(y, x) && MAP[y][x] == 1) {
+                int len = bfs({y, x}, p);
+                if (len < min_len) {
+                    min_len = len;
+                    ans = {y, x};
                 }
-        }
-    player = tmp_player;
+            }
+    return ans;
+}
+
+// ¸¸¾à ¸ðµÎ ÆíÀÇÁ¡¿¡ µé¾î°¬´Ù¸é ºüÁ®³ª¿Â´Ù
+bool isEmpty() {
+    for (int i = 0; i < m; i++)
+        if (isMan[i] || man[i].first == n || man[i].second == n || MAP[man[i].first][man[i].second] != 2)
+            return true;
+    return false;
 }
 
 int main() {
+    freopen("./input.txt", "r", stdin);
     input();
+
+    while (isEmpty()) {
+        // ÃÖ´Ü°Å¸® ¿òÁ÷ÀÌ±â
+        for (int i = 0; i < m; i++)
+            if (isMan[i])
+                man[i] = move(i);
+
+        // µµÂøÇß´Â°¡?
+        for (int i = 0; i < m; i++)
+            if (isMan[i] && man[i] == dest[i]) {
+                wall[man[i].first][man[i].second] = 1;
+                MAP[man[i].first][man[i].second] = 2;
+                isMan[i] = false;
+            }
+
+        // ÅõÀÔÇÒ º£ÀÌ½ºÄ·ÇÁ À§Ä¡
+        if (ans < m && !isMan[ans]) {
+            isMan[ans] = true;
+            man[ans] = set_person(ans);
+            wall[man[ans].first][man[ans].second] = 1;
+        }
+        ans++;
+    }
+
+    cout << ans;
     return 0;
 }
