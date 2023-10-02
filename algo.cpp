@@ -3,131 +3,142 @@
 #include <queue>
 using namespace std;
 
-// 0: 길, 1: 베이스캠프, 2: 편의점 도착
-int dy[] = {-1, 0, 0, 1};
-int dx[] = {0, -1, 1, 0};
-int n, m, ans = 0;
-vector<vector<int>> MAP, wall;
+struct player {
+    int y, x, dir, stat;
+    int gun, score;
+};
 
-// 현재 손놈이 있는 곳, 손놈이 갈 목적지
-vector<pair<int, int>> man, dest;
-// 편의점을 찾으러 투입되었는가?
-vector<bool> isMan;
+int dy[] = {-1, 0, 1, 0};
+int dx[] = {0, 1, 0, -1};
+int n, m, k;
+vector<vector<vector<int>>> MAP;
+vector<player> arr;
 
-bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n && !wall[y][x]; }
+bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
 
 void input() {
-    cin >> n >> m;
-    MAP = vector<vector<int>>(n, vector<int>(n, 0));
-    wall = MAP;
-    dest = vector<pair<int, int>>(m, {n, n});
-    man = dest;
-    isMan = vector<bool>(m, false);
+    cin >> n >> m >> k;
+    MAP = vector<vector<vector<int>>>(n, vector<vector<int>>(n));
+    arr = vector<player>(m);
 
     for (int i = 0; i < n; i++)
-        for (auto &&j : MAP[i])
-            cin >> j;
-    for (auto &&i : dest) {
-        cin >> i.first >> i.second;
-        i.first--, i.second--;
-    }
-}
-
-int bfs(pair<int, int> p, int idx) {
-    queue<pair<int, int>> q;
-    vector<vector<int>> used(n, vector<int>(n, 0));
-    vector<vector<int>> dist = used;
-    q.push(p);
-
-    while (!q.empty()) {
-        pair<int, int> cur = q.front();
-        q.pop();
-
-        for (int i = 0; i < 4; i++) {
-            int y = cur.first + dy[i];
-            int x = cur.second + dx[i];
-            if (inRange(y, x) && !used[y][x]) {
-                used[y][x] = 1;
-                dist[y][x] = dist[cur.first][cur.second] + 1;
-                q.push({y, x});
-            }
-            if (cur == dest[idx])
-                return dist[cur.first][cur.second];
+        for (auto &&j : MAP[i]) {
+            int g;
+            cin >> g;
+            if (g)
+                j.push_back(g);
         }
+    for (auto &&i : arr) {
+        cin >> i.y >> i.x >> i.dir >> i.stat;
+        i.y--, i.x--;
+        i.score = i.gun = 0;
     }
-
-    return n * n;
 }
 
-pair<int, int> move(int p) {
-    pair<int, int> ans = man[p];
-    int min_len = n * n;
-
-    for (int i = 0; i < 4; i++) {
-        int y = man[p].first + dy[i];
-        int x = man[p].second + dx[i];
-        if (inRange(y, x)) {
-            int len = bfs({y, x}, p);
-            if (len < min_len) {
-                min_len = len;
-                ans = {y, x};
-            }
-        }
-    }
-    return ans;
-}
-
-pair<int, int> set_person(int p) {
-    pair<int, int> ans = man[p];
-    int min_len = n * n;
-
-    for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-            if (inRange(y, x) && MAP[y][x] == 1) {
-                int len = bfs({y, x}, p);
-                if (len < min_len) {
-                    min_len = len;
-                    ans = {y, x};
-                }
-            }
-    return ans;
-}
-
-// 만약 모두 편의점에 들어갔다면 빠져나온다
-bool isEmpty() {
+int isTwoPlayer(player p, int idx) {
     for (int i = 0; i < m; i++)
-        if (isMan[i] || man[i].first == n || man[i].second == n || MAP[man[i].first][man[i].second] != 2)
-            return true;
-    return false;
+        if (i != idx && arr[i].y == p.y && arr[i].x == p.x)
+            return i;
+    return -1;
+}
+
+void move_player(player &p, bool isFight, int idx) {
+    player tmp = p;
+    tmp.y = p.y + dy[p.dir];
+    tmp.x = p.x + dx[p.dir];
+
+    if (!isFight && !inRange(tmp.y, tmp.x))
+        p.dir += (p.dir >= 2) ? -2 : 2;
+    else if (isFight)
+        for (int i = 0; i < 4; i++) {
+            if (inRange(tmp.y, tmp.x) && isTwoPlayer(tmp, idx) < 0)
+                break;
+            p.dir = (p.dir == 3) ? 0 : p.dir + 1;
+            tmp.y = p.y + dy[p.dir];
+            tmp.x = p.x + dx[p.dir];
+        }
+    p.y += dy[p.dir], p.x += dx[p.dir];
+}
+
+void get_gun(player &p) {
+    if (p.gun)
+        MAP[p.y][p.x].push_back(p.gun);
+    sort(MAP[p.y][p.x].begin(), MAP[p.y][p.x].end());
+    p.gun = MAP[p.y][p.x][MAP[p.y][p.x].size() - 1];
+    MAP[p.y][p.x].pop_back();
+}
+
+// p1이면 true, p2이면 false
+bool isWinner(player p1, player p2) {
+    int s1 = p1.stat + p1.gun, s2 = p2.stat + p2.gun;
+    if (s1 == s2)
+        return p1.stat > p2.stat;
+    return s1 > s2;
+}
+
+void fight_player(player &p1, player &p2, int idx) {
+    int score = abs(p1.stat + p1.gun - (p2.stat + p2.gun));
+    if (isWinner(p1, p2)) {
+        // 진 플레이어
+        MAP[p2.y][p2.x].push_back(p2.gun);
+        p2.gun = 0;
+        move_player(p2, true, idx);
+        if (MAP[p2.y][p2.x].size())
+            get_gun(p2);
+
+        // 이긴 플레이어
+        p1.score += score;
+        get_gun(p1);
+    } else {
+        // 진 플레이어
+        MAP[p1.y][p1.x].push_back(p1.gun);
+        p1.gun = 0;
+        move_player(p1, true, idx);
+        if (MAP[p1.y][p1.x].size())
+            get_gun(p1);
+
+        // 이긴 플레이어
+        p2.score += score;
+        get_gun(p2);
+    }
+}
+
+void debug() {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (!MAP[i][j].size())
+                cout << 0;
+            else
+                for (auto &&k : MAP[i][j])
+                    cout << k;
+            cout << ' ';
+        }
+        cout << endl;
+    }
+
+    cout << endl;
+    for (auto &&i : arr)
+        cout << i.y << ' ' << i.x << ' ' << i.dir << ' ' << i.stat << ' ' << i.gun << endl;
+    cout << endl;
 }
 
 int main() {
     freopen("./input.txt", "r", stdin);
     input();
 
-    while (isEmpty()) {
-        // 최단거리 움직이기
-        for (int i = 0; i < m; i++)
-            if (isMan[i])
-                man[i] = move(i);
-
-        // 도착했는가?
-        for (int i = 0; i < m; i++)
-            if (isMan[i] && man[i] == dest[i]) {
-                wall[man[i].first][man[i].second] = 1;
-                MAP[man[i].first][man[i].second] = 2;
-                isMan[i] = false;
-            }
-
-        // 투입할 베이스캠프 위치
-        if (ans < m && !isMan[ans]) {
-            isMan[ans] = true;
-            man[ans] = set_person(ans);
-            wall[man[ans].first][man[ans].second] = 1;
+    for (int i = 0; i < k; i++) {
+        for (int j = 0; j < m; j++) {
+            move_player(arr[j], false, j);
+            int idx = isTwoPlayer(arr[j], j);
+            if (MAP[arr[j].y][arr[j].x].size() && idx < 0)
+                get_gun(arr[j]);
+            else if (idx >= 0)
+                fight_player(arr[j], arr[idx], idx);
+            debug();
         }
-        ans++;
     }
 
-    cout << ans;
+    for (auto &&i : arr)
+        cout << i.score << ' ';
     return 0;
 }
