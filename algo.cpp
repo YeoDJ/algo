@@ -1,16 +1,22 @@
 #include <algorithm>
 #include <iostream>
 #include <queue>
-#include <unordered_set>
+#define RED_BOMB_ALGO(isErase)                                                                                                                                                                         \
+    {                                                                                                                                                                                                  \
+        pair<int, int> tmp(y, x);                                                                                                                                                                      \
+        int dist = distance(red_bomb.begin(), find(red_bomb.begin(), red_bomb.end(), tmp));                                                                                                            \
+        if (!MAP[y][x])                                                                                                                                                                                \
+            (isErase) ? red_bomb.erase(red_bomb.begin() + dist) : 1;                                                                                                                                   \
+    }
 using namespace std;
 
-// -1: Èæµ¹, 0: »¡Æø, 1 ~ m: ±× ÀÌ¿Ü
+// -1: Èæµ¹, 0: »¡Æø, 1 ~ m: ±× ÀÌ¿Ü, -2: ºó °ø°£
 // red_cnt: ¹­À½ Áß »¡°£ÆøÅº °³¼ö, std_p: ±âÁØÁ¡
 int n, m;
 int red_cnt = 0, tmp_red_cnt;
 pair<int, int> std_p, tmp_std_p;
 vector<vector<int>> MAP, used, bundle, tmp_bundle;
-unordered_set<pair<int, int>> red_bomb;
+vector<pair<int, int>> red_bomb;
 
 bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
 
@@ -21,7 +27,7 @@ void input() {
         for (int x = 0; x < n; x++) {
             cin >> MAP[y][x];
             if (MAP[y][x] == 0)
-                red_bomb.insert({y, x});
+                red_bomb.push_back({y, x});
         }
 }
 
@@ -32,7 +38,7 @@ int bfs(int ny, int nx) {
     tmp_std_p = {-1, n};
     int dy[] = {-1, 1, 0, 0};
     int dx[] = {0, 0, -1, 1};
-    int cnt = 0;
+    int cnt = 1;
 
     queue<pair<int, int>> q;
     q.push({ny, nx});
@@ -41,14 +47,14 @@ int bfs(int ny, int nx) {
     while (!q.empty()) {
         pair<int, int> cur = q.front();
         tmp_bundle[cur.first][cur.second] = 1;
-        tmp_red_cnt += (red_bomb.find(cur) != red_bomb.end()) ? 1 : 0;
+        tmp_red_cnt += (find(red_bomb.begin(), red_bomb.end(), cur) != red_bomb.end()) ? 1 : 0;
         tmp_std_p = (MAP[cur.first][cur.second] > 0 && (cur.first > tmp_std_p.first || (cur.first == tmp_std_p.first && cur.second < tmp_std_p.second))) ? cur : tmp_std_p;
         q.pop();
 
         for (int i = 0; i < 4; i++) {
-            int y = ny + dy[i];
-            int x = nx + dx[i];
-            if (inRange(y, x) && !used[y][x] && (MAP[y][x] == MAP[ny][nx] || MAP[y][x] == 0)) {
+            int y = cur.first + dy[i];
+            int x = cur.second + dx[i];
+            if (inRange(y, x) && !used[y][x] && (MAP[y][x] == MAP[ny][nx] || !MAP[y][x])) {
                 used[y][x] = 1;
                 cnt++;
                 q.push({y, x});
@@ -75,7 +81,7 @@ bool isBomb() {
     used = vector<vector<int>>(n, vector<int>(n, 0));
     for (int y = 0; y < n; y++)
         for (int x = 0; x < n; x++)
-            if (MAP[y][x] == -1)
+            if (MAP[y][x] < 0)
                 used[y][x] = 1;
 
     for (int y = 0; y < n; y++)
@@ -94,34 +100,64 @@ bool isBomb() {
     return max_sz > 1;
 }
 
+// Æø ¡Ú ¹ß
 int bomb() {
-    // Æø ¡Ú ¹ß
     int cnt = 0;
     for (int y = 0; y < n; y++)
         for (int x = 0; x < n; x++)
             if (bundle[y][x]) {
+                RED_BOMB_ALGO(true);
                 cnt++;
-                MAP[y][x] = 0;
+                MAP[y][x] = -2;
             }
     return cnt * cnt;
 }
 
+// Áß ¡é¡é ·Â
 void drop() {
-    // Áß ¡é¡é ·Â
-    vector<vector<int>> tmp_MAP = MAP;
+    vector<vector<int>> tmp_MAP(n, vector<int>(n, -2));
+    vector<pair<int, int>> tmp_red_bomb(red_bomb.size());
+
+    // MAP
     for (int x = 0; x < n; x++) {
         int ny = n - 1;
         for (int y = n - 1; y >= 0; y--) {
-            if (MAP[y][x] > 0) {
+            if (MAP[y][x] >= 0) {
                 tmp_MAP[ny][x] = MAP[y][x];
+                RED_BOMB_ALGO(false);
                 ny--;
-            } else if (MAP[y][x] == -1)
+            } else if (MAP[y][x] == -1) {
+                tmp_MAP[y][x] = -1;
                 ny = y - 1;
+            }
         }
     }
+
+    MAP = tmp_MAP;
+    red_bomb = tmp_red_bomb;
 }
 
-void rotate() {}
+// È¸ ? Àü
+void rotate() {
+    vector<vector<int>> tmp_MAP(n, vector<int>(n, -2));
+    vector<pair<int, int>> tmp_red_bomb(red_bomb.size());
+    for (int y = 0; y < n; y++)
+        for (int x = 0; x < n; x++) {
+            tmp_MAP[n - 1 - x][y] = MAP[y][x];
+            RED_BOMB_ALGO(false);
+        }
+    MAP = tmp_MAP;
+}
+
+void debug() {
+    for (int i = 0; i < n; i++) {
+        for (auto &&j : MAP[i]) {
+            cout << j << ' ';
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
 
 int main() {
     freopen("./input.txt", "r", stdin);
@@ -133,6 +169,7 @@ int main() {
         drop();
         rotate();
         drop();
+        debug();
     }
 
     cout << ans;
