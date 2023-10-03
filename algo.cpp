@@ -1,16 +1,11 @@
+#include <algorithm>
 #include <iostream>
 #include <queue>
-#define RED_BOMB_ALGO(isErase)                                                                                                                                                                         \
-    {                                                                                                                                                                                                  \
-        pair<int, int> tmp(y, x);                                                                                                                                                                      \
-        int dist = distance(red_bomb.begin(), find(red_bomb.begin(), red_bomb.end(), tmp));                                                                                                            \
-        if (!MAP[y][x])                                                                                                                                                                                \
-            (isErase) ? red_bomb.erase(red_bomb.begin() + dist) : 1;                                                                                                                                   \
-    }
+#define DIST distance(red_bomb.begin(), find(red_bomb.begin(), red_bomb.end(), tmp))
 using namespace std;
 
-// -1: ï¿½æµ¹, 0: ï¿½ï¿½ï¿½ï¿½, 1 ~ m: ï¿½ï¿½ ï¿½Ì¿ï¿½, -2: ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-// red_cnt: ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Åº ï¿½ï¿½ï¿½ï¿½, std_p: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+// -1: Èæµ¹, 0: »¡Æø, 1 ~ m: ±× ÀÌ¿Ü, -2: ºó °ø°£
+// red_cnt: ¹­À½ Áß »¡°£ÆøÅº °³¼ö, std_p: ±âÁØÁ¡
 int n, m;
 int red_cnt = 0, tmp_red_cnt;
 pair<int, int> std_p, tmp_std_p;
@@ -30,7 +25,7 @@ void input() {
         }
 }
 
-// ï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½
+// ¹­À½ Å©±â
 int bfs(int ny, int nx) {
     tmp_bundle = vector<vector<int>>(n, vector<int>(n, 0));
     tmp_red_cnt = 0;
@@ -99,31 +94,32 @@ bool isBomb() {
     return max_sz > 1;
 }
 
-// ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½
+// Æø ¡Ú ¹ß
 int bomb() {
     int cnt = 0;
     for (int y = 0; y < n; y++)
         for (int x = 0; x < n; x++)
             if (bundle[y][x]) {
-                RED_BOMB_ALGO(true);
                 cnt++;
+                pair<int, int> tmp(y, x);
+                if (!MAP[y][x])
+                    red_bomb.erase(red_bomb.begin() + DIST);
                 MAP[y][x] = -2;
             }
     return cnt * cnt;
 }
 
-// ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½
+// Áß ¡é¡é ·Â
 void drop() {
     vector<vector<int>> tmp_MAP(n, vector<int>(n, -2));
-    vector<pair<int, int>> tmp_red_bomb(red_bomb.size());
-
-    // MAP
     for (int x = 0; x < n; x++) {
         int ny = n - 1;
         for (int y = n - 1; y >= 0; y--) {
             if (MAP[y][x] >= 0) {
                 tmp_MAP[ny][x] = MAP[y][x];
-                RED_BOMB_ALGO(false);
+                pair<int, int> tmp(y, x);
+                if (!MAP[y][x])
+                    red_bomb[DIST] = {ny, x};
                 ny--;
             } else if (MAP[y][x] == -1) {
                 tmp_MAP[y][x] = -1;
@@ -131,35 +127,23 @@ void drop() {
             }
         }
     }
-
     MAP = tmp_MAP;
-    red_bomb = tmp_red_bomb;
 }
 
-// È¸ ? ï¿½ï¿½
+// È¸ ? Àü
 void rotate() {
     vector<vector<int>> tmp_MAP(n, vector<int>(n, -2));
-    vector<pair<int, int>> tmp_red_bomb(red_bomb.size());
     for (int y = 0; y < n; y++)
         for (int x = 0; x < n; x++) {
             tmp_MAP[n - 1 - x][y] = MAP[y][x];
-            RED_BOMB_ALGO(false);
+            pair<int, int> tmp(y, x);
+            if (!MAP[y][x])
+                red_bomb[DIST] = {n - 1 - x, y};
         }
     MAP = tmp_MAP;
 }
 
-void debug() {
-    for (int i = 0; i < n; i++) {
-        for (auto &&j : MAP[i]) {
-            cout << j << ' ';
-        }
-        cout << endl;
-    }
-    cout << endl;
-}
-
 int main() {
-    freopen("./input.txt", "r", stdin);
     input();
     int ans = 0;
 
@@ -168,7 +152,6 @@ int main() {
         drop();
         rotate();
         drop();
-        debug();
     }
 
     cout << ans;
