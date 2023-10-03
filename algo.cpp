@@ -4,8 +4,8 @@
 #include <unordered_set>
 using namespace std;
 
-// -1: Èæµ¹, 0: »¡Æø, 1 ~ m: ±× ÀÌ¿Ü
-// red_cnt: ¹­À½ Áß »¡°£ÆøÅº °³¼ö, std_p: ±âÁØÁ¡
+// -1: ?úô, 0: ????, 1 ~ m: ?? ???
+// red_cnt: ???? ?? ??????? ????, std_p: ??????
 int n, m;
 int red_cnt = 0, tmp_red_cnt;
 pair<int, int> std_p, tmp_std_p;
@@ -25,7 +25,7 @@ void input() {
         }
 }
 
-// ¹­À½ Å©±â
+// ???? ???
 int bfs(int ny, int nx) {
     tmp_bundle = vector<vector<int>>(n, vector<int>(n, 0));
     tmp_red_cnt = 0;
@@ -95,7 +95,7 @@ bool isBomb() {
 }
 
 int bomb() {
-    // Æø ¡Ú ¹ß
+    // ?? ?? ??
     int cnt = 0;
     for (int y = 0; y < n; y++)
         for (int x = 0; x < n; x++)
@@ -107,7 +107,7 @@ int bomb() {
 }
 
 void drop() {
-    // Áß ¡é¡é ·Â
+    // ?? ??? ??
     vector<vector<int>> tmp_MAP = MAP;
     for (int x = 0; x < n; x++) {
         int ny = n - 1;
