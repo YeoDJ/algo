@@ -1,47 +1,23 @@
+#include <algorithm>
+#include <cmath>
 #include <iostream>
-#include <queue>
+#include <vector>
 using namespace std;
 
-int n, m, k;
-vector<vector<char>> MAP;
-
-bool input() {
-    cin >> n >> m;
-    if (n < 1 || n > 100 || m < 1 || m > 4)
-        return false;
-    k = (m < 3) ? n / 2 + 1 : n;
-    MAP = vector<vector<char>>(n, vector<char>(k, ' '));
-    return true;
-}
-
-void solution() {
-    switch (m) {
-    case 1:
-        break;
-    case 2:
-        /* code */
-        break;
-    case 3:
-        /* code */
-        break;
-    case 4:
-        /* code */
-        break;
-    }
-}
-
 int main() {
-    if (!input()) {
-        cout << "INPUT ERROR!";
-        return 0;
-    }
+    int n;
+    cin >> n;
+    vector<int> arr;
 
-    solution();
-    for (int i = 0; i < n; i++) {
-        for (auto &&j : MAP[i])
-            cout << j;
-        cout << endl;
-    }
+    for (int i = 1; i <= (int)sqrt(n); i++)
+        if (!(n % i)) {
+            arr.push_back(i);
+            if (n / i != i)
+                arr.push_back(n / i);
+        }
 
+    sort(arr.begin(), arr.end());
+    for (auto &&i : arr)
+        cout << i << ' ';
     return 0;
 }
