@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.ejs": "html",
         "*.tdl": "cpp",
         "*.sql": "oraclesql",
         "ostream": "cpp",
@@ -85,6 +86,8 @@
         "stack": "cpp",
         "bit": "cpp",
         "compare": "cpp",
-        "concepts": "cpp"
+        "concepts": "cpp",
+        "ranges": "cpp",
+        "span": "cpp"
     }
 }
