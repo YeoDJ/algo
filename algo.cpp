@@ -1,89 +1,122 @@
 #include <algorithm>
-#include <cstring>
 #include <iostream>
-#include <vector>
-#define FIRST mal[path[i]].first
-#define SECOND mal[path[i]].second
+#include <queue>
 using namespace std;
 
-int ans = 0;
-int arr[10], path[10];
-vector<vector<int>> MAP(4);
+struct player {
+    int idx, y, x, dir;
+};
+
+int dy[] = {-1, 1, 0, 0};
+int dx[] = {0, 0, -1, 1};
+int n, m, k;
+// (독점자, 유효 시간)
+vector<vector<pair<int, int>>> MAP;
+vector<player> arr;
+vector<vector<vector<int>>> prior_dir;
+
+bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
+
+bool compare(player p1, player p2) { return p1.idx < p2.idx; }
 
 void input() {
-    int idx = 1;
-    vector<int> tmp[3] = {{13, 16, 19}, {22, 24}, {28, 27, 26}};
-    memset(path, -1, sizeof(path));
-    for (auto &&i : arr)
-        cin >> i;
+    cin >> n >> m >> k;
+    MAP = vector<vector<pair<int, int>>>(n, vector<pair<int, int>>(n, {0, 0}));
+    prior_dir = vector<vector<vector<int>>>(m, vector<vector<int>>(4, vector<int>(4)));
 
-    for (int i = 2; i <= 40; i += 2) {
-        MAP[0].push_back(i);
-        for (int j = idx; j <= 3; j++)
-            MAP[j].push_back(i);
-        if (!(i % 10))
-            idx++;
-    }
-
-    for (int i = 0; i < 3; i++)
-        for (auto &&j : tmp[i])
-            MAP[i + 1].push_back(j);
-    for (int i = 25; i <= 40; i += 5)
-        for (int j = 1; j <= 3; j++)
-            MAP[j].push_back(i);
-}
-
-int find_dist() {
-    int sum = 0, num;
-    // (경로, 몇 번째), 출발: -1, 도착: 99
-    vector<pair<int, int>> mal(4, {0, -1});
-
-    for (int i = 0; i < 10; i++)
-        if (SECOND != 99) {
-            SECOND += arr[i];
-            if (SECOND >= MAP[FIRST].size())
-                SECOND = 99;
-            else {
-                num = MAP[FIRST][SECOND];
-                sum += num;
-                if (!FIRST && !(num % 10) && num != 40)
-                    FIRST = num / 10;
-
-                // 겹쳐 있다면 return
-                for (int j = 0; j < 4; j++)
-                    if (j != path[i] && mal[j].second != -1 && mal[j].second != 99) {
-                        if (mal[path[i]] == mal[j])
-                            return 0;
-                        for (int k = 25; k <= 40; k += 5)
-                            if (MAP[FIRST][SECOND] == k && MAP[mal[j].first][mal[j].second] == k)
-                                return 0;
-                    }
+    for (int y = 0; y < n; y++)
+        for (int x = 0; x < n; x++) {
+            cin >> MAP[y][x].first;
+            if (MAP[y][x].first) {
+                MAP[y][x].second = k;
+                arr.push_back({MAP[y][x].first, y, x, -1});
             }
         }
 
-    return sum;
+    sort(arr.begin(), arr.end(), compare);
+    for (auto &&i : arr) {
+        cin >> i.dir;
+        i.dir--;
+    }
+
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < 4; j++)
+            for (auto &&z : prior_dir[i][j]) {
+                cin >> z;
+                z--;
+            }
 }
 
-void solution(int lvl) {
-    if (lvl == 10) {
-        ans = max(ans, find_dist());
-        if (ans == 230) {
-            find_dist();
+void move_player(int i, player &p) {
+    int my_land = -1;
+    for (auto &&j : prior_dir[i][p.dir]) {
+        int y = p.y + dy[j];
+        int x = p.x + dx[j];
+        if (inRange(y, x)) {
+            // 미독점 구역이면 이동하고 return
+            if (!MAP[y][x].first) {
+                p.y = y, p.x = x;
+                p.dir = j;
+                return;
+            }
+            if (MAP[y][x].first == p.idx && my_land == -1)
+                my_land = j;
         }
-        return;
     }
 
-    for (int i = 0; i < 4; i++) {
-        path[lvl] = i;
-        solution(lvl + 1);
-        path[lvl] = -1;
+    // 미독점 구역이 없으면 독점했던 곳으로 감
+    if (my_land != -1) {
+        p.y += dy[my_land], p.x += dx[my_land];
+        p.dir = my_land;
     }
+}
+
+void remain_land() {
+    for (int i = 0; i < n; i++)
+        for (auto &&j : MAP[i])
+            if (j.second > 0) {
+                j.second--;
+                if (!j.second)
+                    j.first = 0;
+            }
+
+    // 이긴 플레이어에 대해 MAP에 반영하기(독점하기)
+    for (auto &&i : arr)
+        MAP[i.y][i.x] = {i.idx, k};
+}
+
+vector<player> fight_player() {
+    // 싸움에서 지면 true(없어짐)
+    int sz = arr.size();
+    vector<bool> isFight(sz, false);
+    vector<player> ans;
+
+    // 지는 대상 선정
+    for (int i = 0; i < sz - 1; i++)
+        for (int j = i + 1; j < sz; j++)
+            if (arr[i].y == arr[j].y && arr[i].x == arr[j].x)
+                isFight[j] = true;
+
+    // 이긴 player만 살아남음
+    for (int i = 0; i < sz; i++)
+        if (!isFight[i])
+            ans.push_back(arr[i]);
+    return ans;
 }
 
 int main() {
-    freopen("./input.txt", "r", stdin);
     input();
-    solution(0);
+    int ans = 0;
+
+    while (arr.size() != 1 && ans < 1000) {
+        for (auto &&i : arr)
+            move_player(i.idx - 1, i);
+        arr = fight_player();
+        remain_land();
+        ans++;
+    }
+
+    ans = (ans == 1000) ? -1 : ans;
     cout << ans;
     return 0;
 }
