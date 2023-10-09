@@ -1,216 +1,90 @@
 #include <algorithm>
+#include <cstring>
 #include <iostream>
-#include <queue>
 using namespace std;
 
-// 블록 종류(t), 좌표(y, x)
-struct block {
-    int t, y, x;
-};
+int ans, sum;
+int dy[] = {-1, -1, 0, 1, 1, 1, 0, -1};
+int dx[] = {0, -1, -1, -1, 0, 1, 1, 1};
+// (도둑 번호, 방향), 도둑 번호가 음수라면 잡혔다는 의미
+pair<int, int> MAP[4][4];
 
-int k;
-vector<vector<bool>> MAP(10, vector<bool>());
-vector<block> arr;
+bool inRange(int y, int x) { return 0 <= y && y < 4 && 0 <= x && x < 4; }
 
-void input() {
-    cin >> k;
-    for (int y = 0; y < 10; y++) {
-        int sx = (y <= 3) ? 10 : 4;
-        for (int x = 0; x < sx; x++)
-            MAP[y].push_back(false);
-    }
+int input() {
+    for (int i = 0; i < 4; i++)
+        for (auto &&j : MAP[i]) {
+            cin >> j.first >> j.second;
+            j.second--;
+        }
 
-    arr = vector<block>(k);
-    for (auto &&i : arr)
-        cin >> i.t >> i.y >> i.x;
+    ans = sum = MAP[0][0].first;
+    MAP[0][0].first *= -1;
+    return MAP[0][0].second;
 }
 
-void setting_MAP(block b, bool isFill) {
-    MAP[b.y][b.x] = isFill;
-    (b.t == 2) ? MAP[b.y][b.x + 1] = isFill : (b.t == 3) ? MAP[b.y + 1][b.x] = isFill : 1;
-}
-
-void tetris_down(block b) {
-    // 시작점 블록을 어디에 둘 것인가?
-    pair<int, int> p(4, b.x);
-    for (p.first = 4; p.first < 10; p.first++)
-        if (MAP[p.first][p.second]) {
-            p.first--;
+// 경찰 말이 파라미터로 주어질 때 도둑 말은 어떻게 움직이는가?
+void move_thief(pair<int, int> thief, pair<int, int> police, int &dir) {
+    for (int i = 0; i < 8; i++) {
+        pair<int, int> p(thief.first + dy[dir], thief.second + dx[dir]);
+        if (inRange(p.first, p.second) && p != police) {
+            swap(MAP[thief.first][thief.second], MAP[p.first][p.second]);
             break;
         }
-    (p.first == 10) ? p.first-- : 1;
-
-    // 블록 종류가 2라면 추가적으로 확인 절차가 필요하다.
-    if (b.t == 2) {
-        pair<int, int> tmp(4, b.x + 1);
-        for (tmp.first = 4; tmp.first < 10; tmp.first++)
-            if (MAP[tmp.first][tmp.second]) {
-                tmp.first--;
-                break;
-            }
-        (tmp.first == 10) ? tmp.first-- : 1;
-        p.first = min(p.first, tmp.first);
+        dir = (dir == 7) ? 0 : dir + 1;
     }
-
-    // 블록 종류에 따라 추가 블록을 뒤따라 둔다.
-    MAP[p.first][p.second] = true;
-    (b.t == 2) ? MAP[p.first][p.second + 1] = true : (b.t == 3) ? MAP[p.first - 1][p.second] = true : 1;
 }
 
-void tetris_right(block b) {
-    // 시작점 블록을 어디에 둘 것인가?
-    pair<int, int> p(b.y, 4);
-    for (p.second = 4; p.second < 10; p.second++)
-        if (MAP[p.first][p.second]) {
-            p.second--;
-            break;
+// 경찰 말을 어떻게 움직일 것인가?
+void solution(int ny, int nx, int dir) {
+    pair<int, int> tmp_MAP[4][4];
+    bool flag = false;
+
+    while (1) {
+        // 도둑 움직이기
+        for (int i = 1; i <= 16; i++) {
+            flag = false;
+            for (int y = 0; y < 4; y++) {
+                for (int x = 0; x < 4; x++)
+                    if (abs(MAP[y][x].first) == i) {
+                        // 경찰은 지금 움직이면 안됨
+                        if (MAP[y][x].first > 0)
+                            move_thief({y, x}, {ny, nx}, MAP[y][x].second);
+                        flag = true;
+                        break;
+                    }
+                if (flag)
+                    break;
+            }
         }
-    (p.second == 10) ? p.second-- : 1;
 
-    // 블록 종류가 3이라면 추가적으로 확인 절차가 필요하다.
-    if (b.t == 3) {
-        pair<int, int> tmp(b.y + 1, 4);
-        for (tmp.second = 4; tmp.second < 10; tmp.second++)
-            if (MAP[tmp.first][tmp.second]) {
-                tmp.second--;
+        // 경찰 움직이기
+        memcpy(tmp_MAP, MAP, sizeof(MAP));
+        while (1) {
+            ny += dy[dir], nx += dx[dir];
+            if (MAP[ny][nx].first < 0)
+                continue;
+            if (flag = !inRange(ny, nx))
                 break;
-            }
-        (tmp.second == 10) ? tmp.second-- : 1;
-        p.second = min(p.second, tmp.second);
-    }
 
-    // 블록 종류에 따라 추가 블록을 뒤따라 둔다.
-    MAP[p.first][p.second] = true;
-    (b.t == 2) ? MAP[p.first][p.second - 1] = true : (b.t == 3) ? MAP[p.first + 1][p.second] = true : 1;
-}
+            // 점수 구하기
+            sum += MAP[ny][nx].first;
+            MAP[ny][nx].first *= -1;
+            ans = max(ans, sum);
+            solution(ny, nx, MAP[ny][nx].second);
 
-int break_down() {
-    // 없앨 행 선택
-    int ans = 0;
-    vector<bool> isBreak(4, true);
-    for (int y = 6; y < 10; y++)
-        for (int x = 0; x < 4; x++)
-            if (!MAP[y][x]) {
-                isBreak[y - 6] = false;
-                break;
-            }
-
-    // 없애고 블록 떨구기
-    vector<vector<bool>> tmp_MAP(4, vector<bool>(4, false));
-    int ny = 3;
-    for (int y = 9; y >= 6; y--)
-        if (!isBreak[y - 6])
-            tmp_MAP[ny--] = MAP[y];
-    if (isBreak[0])
-        for (int x = 0; x < 4; x++)
-            if (MAP[5][x]) {
-                MAP[5][x] = false;
-                tmp_MAP[0][x] = true;
-            }
-    for (int y = 6; y < 10; y++)
-        MAP[y] = tmp_MAP[y - 6];
-
-    // 연한 블록에 대한 처리(몇 번째 행부터 채워져 있는가?)
-    ny = 6;
-    for (int y = 4; y <= 5; y++) {
-        for (int x = 0; x < 4; x++)
-            if (MAP[y][x]) {
-                ny = y;
-                break;
-            }
-        if (ny == 4)
-            break;
-    }
-
-    // 연한 블록에 대한 처리(그만큼 블록 내리기)
-    for (int y = ny; y < ny + 4; y++)
-        tmp_MAP[y - ny] = MAP[y];
-    MAP[4] = MAP[5] = {0, 0, 0, 0};
-    for (int y = 6; y < 10; y++)
-        MAP[y] = tmp_MAP[y - 6];
-
-    // 점수 매기기
-    for (auto &&i : isBreak)
-        ans += i;
-    return ans;
-}
-
-int break_right() {
-    // 없앨 열 선택
-    int ans = 0;
-    vector<bool> isBreak(4, true);
-    for (int x = 6; x < 10; x++)
-        for (int y = 0; y < 4; y++)
-            if (!MAP[y][x]) {
-                isBreak[x - 6] = false;
-                break;
-            }
-
-    // 없애고 블록 떨구기
-    vector<vector<bool>> tmp_MAP(4, vector<bool>(4, false));
-    int nx = 3;
-    for (int x = 9; x >= 6; x--)
-        if (!isBreak[x - 6]) {
-            for (int y = 0; y < 4; y++)
-                tmp_MAP[y][nx] = MAP[y][x];
-            nx--;
+            // 경찰 되돌리기
+            sum += MAP[ny][nx].first;
+            MAP[ny][nx].first *= -1;
+            memcpy(MAP, tmp_MAP, sizeof(tmp_MAP));
         }
-    if (isBreak[0])
-        for (int y = 0; y < 4; y++)
-            if (MAP[y][5]) {
-                MAP[y][5] = false;
-                tmp_MAP[y][0] = true;
-            }
-    for (int x = 6; x < 10; x++)
-        for (int y = 0; y < 4; y++)
-            MAP[y][x] = tmp_MAP[y][x - 6];
-
-    // 연한 블록에 대한 처리(몇 번째 열부터 채워져 있는가?)
-    nx = 6;
-    for (int x = 4; x <= 5; x++) {
-        for (int y = 0; y < 4; y++)
-            if (MAP[y][x]) {
-                nx = x;
-                break;
-            }
-        if (nx == 4)
-            break;
+        if (flag)
+            return;
     }
-
-    // 연한 블록에 대한 처리(그만큼 블록 내리기)
-    for (int x = nx; x < nx + 4; x++)
-        for (int y = 0; y < 4; y++)
-            tmp_MAP[y][x - nx] = MAP[y][x];
-    for (int y = 0; y < 4; y++)
-        MAP[y][4] = MAP[y][5] = 0;
-    for (int x = 6; x < 10; x++)
-        for (int y = 0; y < 4; y++)
-            MAP[y][x] = tmp_MAP[y][x - 6];
-
-    // 점수 매기기
-    for (auto &&i : isBreak)
-        ans += i;
-    return ans;
 }
 
 int main() {
-    freopen("./input.txt", "r", stdin);
-    input();
-    int ans = 0, sum = 0;
-
-    for (int i = 0; i < k; i++) {
-        setting_MAP(arr[i], true);
-        tetris_down(arr[i]);
-        tetris_right(arr[i]);
-        ans += break_down() + break_right();
-        setting_MAP(arr[i], false);
-    }
-
-    for (int y = 6; y < 10; y++)
-        for (int x = 0; x < 4; x++) {
-            sum += MAP[y][x];
-            sum += MAP[x][y];
-        }
-    cout << ans << endl << sum;
+    solution(0, 0, input());
+    cout << ans;
     return 0;
 }
