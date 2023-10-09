@@ -95,7 +95,7 @@ void move_candies(int dir) {
     blue = arr[0], red = arr[1];
 }
 
-void solution(int lvl, int max_lvl) {
+void solution(int lvl, int max_lvl, int prev) {
     if (isExit)
         return;
 
@@ -114,8 +114,10 @@ void solution(int lvl, int max_lvl) {
     }
 
     for (int i = 0; i < 4; i++) {
+        if (i == prev)
+            continue;
         dir_path.push_back(i);
-        solution(lvl + 1, max_lvl);
+        solution(lvl + 1, max_lvl, i);
         dir_path.pop_back();
     }
 }
@@ -125,7 +127,7 @@ int main() {
     input();
     int ans;
     for (ans = 1; ans <= 10; ans++) {
-        solution(0, ans);
+        solution(0, ans, -1);
         if (isExit)
             break;
     }
