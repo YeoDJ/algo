@@ -1,90 +1,136 @@
 #include <algorithm>
-#include <cstring>
 #include <iostream>
+#include <queue>
+#include <string>
+
+#define MOVE_Y                                                                                                                                                                                         \
+    {                                                                                                                                                                                                  \
+        pair<int, int> tmp(y, arr[i].second);                                                                                                                                                          \
+        if (MAP[y][arr[i].second] == '#' || (i == 1 && arr[0] == tmp))                                                                                                                                 \
+            break;                                                                                                                                                                                     \
+        arr[i].first = y;                                                                                                                                                                              \
+        if (arr[i] == out)                                                                                                                                                                             \
+            break;                                                                                                                                                                                     \
+    }
+#define MOVE_X                                                                                                                                                                                         \
+    {                                                                                                                                                                                                  \
+        pair<int, int> tmp(arr[i].first, x);                                                                                                                                                           \
+        if (MAP[arr[i].first][x] == '#' || (i == 1 && arr[0] == tmp))                                                                                                                                  \
+            break;                                                                                                                                                                                     \
+        arr[i].second = x;                                                                                                                                                                             \
+        if (arr[i] == out)                                                                                                                                                                             \
+            break;                                                                                                                                                                                     \
+    }
 using namespace std;
 
-int ans, sum;
-int dy[] = {-1, -1, 0, 1, 1, 1, 0, -1};
-int dx[] = {0, -1, -1, -1, 0, 1, 1, 1};
-// (도둑 번호, 방향), 도둑 번호가 음수라면 잡혔다는 의미
-pair<int, int> MAP[4][4];
+int n, m;
+bool isExit = false;
+vector<string> MAP;
+pair<int, int> blue, red, out;
+vector<int> dir_path;
 
-bool inRange(int y, int x) { return 0 <= y && y < 4 && 0 <= x && x < 4; }
-
-int input() {
-    for (int i = 0; i < 4; i++)
-        for (auto &&j : MAP[i]) {
-            cin >> j.first >> j.second;
-            j.second--;
+void input() {
+    cin >> n >> m;
+    MAP = vector<string>(n);
+    for (int y = 0; y < n; y++) {
+        cin >> MAP[y];
+        for (int x = 0; x < m; x++) {
+            pair<int, int> tmp(y, x);
+            (MAP[y][x] == 'B') ? blue = tmp : (MAP[y][x] == 'R') ? red = tmp : (MAP[y][x] == 'O') ? out = tmp : tmp;
         }
-
-    ans = sum = MAP[0][0].first;
-    MAP[0][0].first *= -1;
-    return MAP[0][0].second;
-}
-
-// 경찰 말이 파라미터로 주어질 때 도둑 말은 어떻게 움직이는가?
-void move_thief(pair<int, int> thief, pair<int, int> police, int &dir) {
-    for (int i = 0; i < 8; i++) {
-        pair<int, int> p(thief.first + dy[dir], thief.second + dx[dir]);
-        if (inRange(p.first, p.second) && p != police) {
-            swap(MAP[thief.first][thief.second], MAP[p.first][p.second]);
-            break;
-        }
-        dir = (dir == 7) ? 0 : dir + 1;
     }
 }
 
-// 경찰 말을 어떻게 움직일 것인가?
-void solution(int ny, int nx, int dir) {
-    pair<int, int> tmp_MAP[4][4];
-    bool flag = false;
+void move_candies(int dir) {
+    // 캔디 순서 선정 후 옮기기, 상하좌우, 각 방향대로 이동하고 있을 때 '#'을 만나면 break
+    pair<int, int> arr[2] = {blue, red};
+    bool isSwap = false;
+    switch (dir) {
+    case 0:
+        if (isSwap = arr[0].first > arr[1].first)
+            swap(arr[0], arr[1]);
+        for (int i = 0; i < 2; i++)
+            for (int y = arr[i].first - 1; y >= 1; y--)
+                MOVE_Y;
+        break;
+    case 1:
+        if (isSwap = arr[0].first < arr[1].first)
+            swap(arr[0], arr[1]);
+        for (int i = 0; i < 2; i++)
+            for (int y = arr[i].first + 1; y < n - 1; y++)
+                MOVE_Y;
+        break;
+    case 2:
+        if (isSwap = arr[0].second > arr[1].second)
+            swap(arr[0], arr[1]);
+        for (int i = 0; i < 2; i++)
+            for (int x = arr[i].second - 1; x >= 1; x--)
+                MOVE_X;
+        break;
+    case 3:
+        if (isSwap = arr[0].second < arr[1].second)
+            swap(arr[0], arr[1]);
+        for (int i = 0; i < 2; i++)
+            for (int x = arr[i].second + 1; x < m - 1; x++)
+                MOVE_X;
+        break;
+    }
+    if (isSwap)
+        swap(arr[0], arr[1]);
 
-    while (1) {
-        // 도둑 움직이기
-        for (int i = 1; i <= 16; i++) {
-            flag = false;
-            for (int y = 0; y < 4; y++) {
-                for (int x = 0; x < 4; x++)
-                    if (abs(MAP[y][x].first) == i) {
-                        // 경찰은 지금 움직이면 안됨
-                        if (MAP[y][x].first > 0)
-                            move_thief({y, x}, {ny, nx}, MAP[y][x].second);
-                        flag = true;
-                        break;
-                    }
-                if (flag)
-                    break;
-            }
-        }
+    // 단, 파랑 사탕이 나가는 경우는 빼야 한다.
+    // case 1. 파랑 사탕이 직접 나가는 경우
+    if (arr[0] == out)
+        return;
+    // case 2. 파랑 사탕이 따라 나가는 경우
+    int dy[] = {1, -1, 0, 0};
+    int dx[] = {0, 0, 1, -1};
+    pair<int, int> tmp(arr[1].first + dy[dir], arr[1].second + dx[dir]);
+    if (arr[1] == out && arr[0] == tmp)
+        return;
 
-        // 경찰 움직이기
-        memcpy(tmp_MAP, MAP, sizeof(MAP));
-        while (1) {
-            ny += dy[dir], nx += dx[dir];
-            if (MAP[ny][nx].first < 0)
-                continue;
-            if (flag = !inRange(ny, nx))
-                break;
+    MAP[blue.first][blue.second] = MAP[red.first][red.second] = '.';
+    MAP[arr[0].first][arr[0].second] = 'B';
+    MAP[arr[1].first][arr[1].second] = 'R';
+    blue = arr[0], red = arr[1];
+}
 
-            // 점수 구하기
-            sum += MAP[ny][nx].first;
-            MAP[ny][nx].first *= -1;
-            ans = max(ans, sum);
-            solution(ny, nx, MAP[ny][nx].second);
+void solution(int lvl, int max_lvl) {
+    if (isExit)
+        return;
 
-            // 경찰 되돌리기
-            sum += MAP[ny][nx].first;
-            MAP[ny][nx].first *= -1;
-            memcpy(MAP, tmp_MAP, sizeof(tmp_MAP));
-        }
-        if (flag)
-            return;
+    if (lvl == max_lvl) {
+        // 사탕 이동
+        vector<string> tmp_MAP = MAP;
+        pair<int, int> tmp_blue = blue, tmp_red = red;
+        for (auto &&i : dir_path)
+            move_candies(i);
+
+        // 빨간색 사탕'만' 통과했는지 따지기
+        isExit = red == out;
+        MAP = tmp_MAP;
+        blue = tmp_blue, red = tmp_red;
+        return;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        dir_path.push_back(i);
+        solution(lvl + 1, max_lvl);
+        dir_path.pop_back();
     }
 }
 
 int main() {
-    solution(0, 0, input());
+    // freopen("./input.txt", "r", stdin);
+    input();
+    int ans;
+    for (ans = 1; ans <= 10; ans++) {
+        solution(0, ans);
+        if (isExit)
+            break;
+    }
+
+    ans = (!isExit) ? -1 : ans;
     cout << ans;
     return 0;
 }
