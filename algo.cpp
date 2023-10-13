@@ -11,6 +11,7 @@ using namespace std;
             pid에 따라 idx를 바로바로 찾아가기 위해 map을 사용
     2. total_sum
         ===> startRace()에서 선택되지 않은 토끼의 점수에 이 점수를 한꺼번에 반영하기 위해
+    3. direction 로직
 */
 
 struct rabbit {
@@ -57,6 +58,7 @@ bool compare(rabbit r1, rabbit r2) {
 void rsltPos(pair<int, int> &p, int py, int px) {
     // R(<->L): R, L, R / U(<->D): U, D, U
     pair<int, int> tmp_p = p;
+    // 좌표가 변하지 말아야 하는 부분 설정하기
     for (int i = 0; i < 3; i++) {
         if (inRange({p.first + py, p.second + px})) {
             p.first += py, p.second += px;
@@ -64,8 +66,8 @@ void rsltPos(pair<int, int> &p, int py, int px) {
         }
         p.first = (py < 0) ? 0 : (py > 0) ? n - 1 : p.first;
         p.second = (px < 0) ? 0 : (px > 0) ? m - 1 : p.second;
-        py = (py < 0) ? tmp_p.first - py : (py > 0) ? n - 1 - tmp_p.first - py : 0;
-        px = (px < 0) ? tmp_p.second - px : (px > 0) ? m - 1 - tmp_p.second - px : 0;
+        py = (py < 0) ? -tmp_p.first - py : (py > 0) ? n - 1 - tmp_p.first - py : 0;
+        px = (px < 0) ? -tmp_p.second - px : (px > 0) ? m - 1 - tmp_p.second - px : 0;
         tmp_p = p;
     }
 }
@@ -110,7 +112,7 @@ void startRace() {
         pq.push(r);
     }
 
-    // 비교하기
+    // 비교하기 & pq를 arr에 반영하기
     rabbit target = {0, 0, 0, 0, 0, 0};
     while (!pq.empty()) {
         rabbit r = pq.top();
@@ -123,7 +125,7 @@ void startRace() {
 }
 
 int main() {
-    freopen("./input.txt", "r", stdin);
+    // freopen("./input.txt", "r", stdin);
     int q;
     cin >> q;
 
