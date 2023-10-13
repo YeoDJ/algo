@@ -1,192 +1,154 @@
-#include <algorithm>
 #include <iostream>
 #include <queue>
+#include <unordered_map>
+#include <unordered_set>
 using namespace std;
 
 /*
     <오답 노트>
-    1. 가장 핵심인 변수: prevPos
-        ===> 방향 우선순위에 맞추어 현재 위치 '이전의' 위치를 따로 저장하여 경로 파악
-        ===> 경로를 구할 때 이 변수를 도착점 -> 시작점 역순으로 탐색
-    2. dist 초기 값을 -1로 함
-        ===> 아예 지나가지 않은 경우는 -1이며, 시작점은 0으로 setting
-        ===> 도착점의 dist 값이 -1이면 레이저가 도달하지 못했다는 뜻
+    1. pid_to_idx
+        ===> arr라는 변수는 정렬될 필요가 없으므로
+            pid에 따라 idx를 바로바로 찾아가기 위해 map을 사용
+    2. total_sum
+        ===> startRace()에서 선택되지 않은 토끼의 점수에 이 점수를 한꺼번에 반영하기 위해
 */
 
-int dy[] = {0, 1, 0, -1, -1, -1, 1, 1};
-int dx[] = {1, 0, -1, 0, -1, 1, 1, -1};
-int n, m, k;
-// attack_his: 숫자가 클 수록 공격한 지 오래됨
-// path: 공격에 관련된 지역 좌표들
-vector<vector<int>> MAP, attack_his;
-vector<pair<int, int>> path;
-
-bool compare(pair<int, int> p1, pair<int, int> p2) {
-    if (MAP[p1.first][p1.second] == MAP[p2.first][p2.second]) {
-        if (attack_his[p1.first][p1.second] == attack_his[p2.first][p2.second]) {
-            if (p1.first + p1.second == p2.first + p2.second)
-                return p1.second > p2.second;
-            return p1.first + p1.second > p2.first + p2.second;
-        }
-        return attack_his[p1.first][p1.second] < attack_his[p2.first][p2.second];
+struct rabbit {
+    int pid, dist, y, x, jump;
+    long long score;
+};
+// 이동할 토끼 결정할 정렬 함수
+struct selectCmp {
+    bool operator()(rabbit r1, rabbit r2) {
+        if (r1.jump != r2.jump)
+            return r1.jump > r2.jump;
+        if (r1.y + r1.x != r2.y + r2.x)
+            return r1.y + r1.x > r2.y + r2.x;
+        if (r1.y != r2.y)
+            return r1.y > r2.y;
+        if (r1.x != r2.x)
+            return r1.x > r2.x;
+        return r1.pid > r2.pid;
     }
-    return MAP[p1.first][p1.second] < MAP[p2.first][p2.second];
+};
+
+int dy[] = {-1, 1, 0, 0};
+int dx[] = {0, 0, -1, 1};
+int n, m, p;
+// total_sum: 토끼가 움직일 때마다 '행 + 열' 값을 여기에 저장함
+long long total_sum = 0;
+vector<rabbit> arr;
+// pid를 키로 하여 idx를 바로 추출하기 위한 변수
+unordered_map<int, int> pid_to_idx;
+
+bool inRange(pair<int, int> p) { return 0 <= p.first && p.first < n && 0 <= p.second && p.second < m; }
+
+// Race에 필요한 정렬 함수
+bool compare(rabbit r1, rabbit r2) {
+    if (r1.y + r1.x != r2.y + r2.x)
+        return r1.y + r1.x > r2.y + r2.x;
+    if (r1.y != r2.y)
+        return r1.y > r2.y;
+    if (r1.x != r2.x)
+        return r1.x > r2.x;
+    return r1.pid > r2.pid;
 }
 
-bool isRemainOne() {
-    int cnt = 0;
-    for (int i = 0; i < n; i++)
-        for (auto &&j : MAP[i]) {
-            if (j)
-                cnt++;
-            if (cnt > 1)
-                return false;
+void rsltPos(pair<int, int> &p, int py, int px) {
+    // R(<->L): R, L, R / U(<->D): U, D, U
+    pair<int, int> tmp_p = p;
+    for (int i = 0; i < 3; i++) {
+        if (inRange({p.first + py, p.second + px})) {
+            p.first += py, p.second += px;
+            break;
         }
-    return true;
+        p.first = (py < 0) ? 0 : (py > 0) ? n - 1 : p.first;
+        p.second = (px < 0) ? 0 : (px > 0) ? m - 1 : p.second;
+        py = (py < 0) ? tmp_p.first - py : (py > 0) ? n - 1 - tmp_p.first - py : 0;
+        px = (px < 0) ? tmp_p.second - px : (px > 0) ? m - 1 - tmp_p.second - px : 0;
+        tmp_p = p;
+    }
 }
 
 void input() {
-    cin >> n >> m >> k;
-    MAP = vector<vector<int>>(n, vector<int>(m, 0));
-    attack_his = MAP;
-    for (int i = 0; i < n; i++)
-        for (auto &&j : MAP[i])
-            cin >> j;
+    cin >> n >> m >> p;
+    for (int i = 0; i < p; i++) {
+        int pid, dist;
+        cin >> pid >> dist;
+        arr.push_back({pid, dist, 0, 0, 0, 0});
+        pid_to_idx[pid] = i;
+    }
 }
 
-pair<int, int> find_attacker() {
-    pair<int, int> ans(-1, -1);
-    for (int y = 0; y < n; y++)
-        for (int x = 0; x < m; x++) {
-            if (!MAP[y][x])
-                continue;
-            if (ans == make_pair(-1, -1) || compare({y, x}, ans))
-                ans = {y, x};
-        }
+void startRace() {
+    int k, s;
+    cin >> k >> s;
+    priority_queue<rabbit, vector<rabbit>, selectCmp> pq;
+    unordered_set<int> isPid;
+    for (auto &&i : arr)
+        pq.push(i);
 
-    MAP[ans.first][ans.second] += n + m;
-    return ans;
-}
+    for (int t = 0; t < k; t++) {
+        int rslt = 0;
+        rabbit r = pq.top();
+        pq.pop();
+        vector<pair<int, int>> dist_rslt(4, {r.y, r.x});
 
-bool laserAttack(pair<int, int> p, pair<int, int> target) {
-    vector<vector<pair<int, int>>> prevPos(n, vector<pair<int, int>>(m, {-1, -1}));
-    vector<vector<int>> dist(n, vector<int>(m, -1));
-    queue<pair<int, int>> q;
-    pair<int, int> cur;
+        // 네 방향에 따라 이동된 위치(벽을 만나면 반대 방향으로 이동)
+        for (int i = 0; i < 4; i++)
+            rsltPos(dist_rslt[i], (dy[i] * r.dist) % (2 * n - 2), (dx[i] * r.dist) % (2 * m - 2));
+        // 위치 우선순위에 따라 이동할 위치 결정한 후 이동
+        for (int i = 1; i < 4; i++)
+            if (compare({0, 0, dist_rslt[i].first, dist_rslt[i].second, 0, 0}, {0, 0, dist_rslt[rslt].first, dist_rslt[rslt].second, 0, 0}))
+                rslt = i;
 
-    // 초기 세팅
-    q.push(p), dist[p.first][p.second] = 0;
-
-    // 최단경로 찾기
-    while (!q.empty()) {
-        cur = q.front();
-        q.pop();
-        for (int i = 0; i < 4; i++) {
-            int y = cur.first + dy[i];
-            int x = cur.second + dx[i];
-            y = (y >= n) ? 0 : (y < 0) ? n - 1 : y;
-            x = (x >= m) ? 0 : (x < 0) ? m - 1 : x;
-
-            if (MAP[y][x] && dist[y][x] == -1) {
-                dist[y][x] = dist[cur.first][cur.second] + 1;
-                prevPos[y][x] = cur;
-                q.push({y, x});
-            }
-        }
-    }
-    // 레이저가 도달하지 못했으면 return
-    if (dist[target.first][target.second] < 0)
-        return false;
-
-    // 일단 타겟 맞춘 다음
-    MAP[target.first][target.second] -= MAP[p.first][p.second];
-    if (MAP[target.first][target.second] <= 0)
-        MAP[target.first][target.second] = 0;
-
-    // 경로를 구한다(단, 시작점은 뺀다.)
-    cur = target;
-    while (cur != p) {
-        path.push_back(prevPos[cur.first][cur.second]);
-        cur = prevPos[cur.first][cur.second];
-    }
-    path.pop_back();
-
-    // 경로를 따라 공격자의 절반만큼 공격한다.
-    for (auto &&i : path) {
-        MAP[i.first][i.second] -= MAP[p.first][p.second] / 2;
-        if (MAP[i.first][i.second] <= 0)
-            MAP[i.first][i.second] = 0;
-    }
-    path.push_back(p), path.push_back(target);
-    return true;
-}
-
-void bomb(pair<int, int> p, pair<int, int> target) {
-    for (int i = 0; i < 8; i++) {
-        int y = target.first + dy[i];
-        int x = target.second + dx[i];
-        y = (y >= n) ? 0 : (y < 0) ? n - 1 : y;
-        x = (x >= m) ? 0 : (x < 0) ? m - 1 : x;
-        if (MAP[y][x] && make_pair(y, x) != p) {
-            path.push_back({y, x});
-            MAP[y][x] -= MAP[p.first][p.second] / 2;
-            if (MAP[y][x] <= 0)
-                MAP[y][x] = 0;
-        }
+        r.y = dist_rslt[rslt].first, r.x = dist_rslt[rslt].second, r.jump++;
+        // r.score는 빼는 이유: 이동한 자신은 이 점수를 받으면 안됨
+        r.score -= r.y + r.x + 2;
+        total_sum += r.y + r.x + 2;
+        isPid.insert(r.pid);
+        pq.push(r);
     }
 
-    MAP[target.first][target.second] -= MAP[p.first][p.second];
-    if (MAP[target.first][target.second] <= 0)
-        MAP[target.first][target.second] = 0;
-    path.push_back(p), path.push_back(target);
-}
-
-void attack(pair<int, int> p) {
-    // 1. 공격할 포탑 선정
-    pair<int, int> ans(-1, -1);
-    for (int y = 0; y < n; y++)
-        for (int x = 0; x < m; x++) {
-            if (!MAP[y][x] || make_pair(y, x) == p)
-                continue;
-            if (ans == make_pair(-1, -1) || !compare({y, x}, ans))
-                ans = {y, x};
-        }
-    // 2. 레이저 공격 -> 실패하면 폭탄 공격
-    if (!laserAttack(p, ans))
-        bomb(p, ans);
-    attack_his[p.first][p.second] = -1;
-}
-
-void reload() {
-    // 1. 아무 연관 없는 구역은 공격력 1 증가
-    for (int y = 0; y < n; y++)
-        for (int x = 0; x < m; x++)
-            if (MAP[y][x] && find(path.begin(), path.end(), make_pair(y, x)) == path.end())
-                MAP[y][x]++;
-    // 2. 공격 이력 갱신하기
-    for (int i = 0; i < n; i++)
-        for (auto &&j : attack_his[i])
-            j++;
-}
-
-int output() {
-    int max_cnt = -1;
-    for (int i = 0; i < n; i++)
-        for (auto &&j : MAP[i])
-            max_cnt = max(max_cnt, j);
-    return max_cnt;
+    // 비교하기
+    rabbit target = {0, 0, 0, 0, 0, 0};
+    while (!pq.empty()) {
+        rabbit r = pq.top();
+        arr[pid_to_idx[r.pid]] = r;
+        pq.pop();
+        if (isPid.find(r.pid) != isPid.end() && compare(r, target))
+            target = r;
+    }
+    arr[pid_to_idx[target.pid]].score += s;
 }
 
 int main() {
-    input();
-    for (int i = 0; i < k; i++) {
-        path.clear();
-        attack(find_attacker());
-        reload();
-        if (isRemainOne())
-            break;
-    }
+    freopen("./input.txt", "r", stdin);
+    int q;
+    cin >> q;
 
-    cout << output();
+    for (int i = 0; i < q; i++) {
+        int cmd;
+        cin >> cmd;
+        switch (cmd) {
+        case 100:
+            input();
+            break;
+        case 200:
+            startRace();
+            break;
+        case 300:
+            int pid, l;
+            cin >> pid >> l;
+            arr[pid_to_idx[pid]].dist *= l;
+            break;
+        case 400:
+            long long ans = -1;
+            for (auto &&i : arr)
+                ans = max(ans, i.score + total_sum);
+            cout << ans;
+            break;
+        }
+    }
     return 0;
 }
