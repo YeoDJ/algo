@@ -1,127 +1,124 @@
+#include <algorithm>
 #include <iostream>
-#include <queue>
+#include <list>
 #include <unordered_map>
-#include <unordered_set>
 using namespace std;
 
-/*
-    <오답 노트>
-    1. pid_to_idx
-        ===> arr라는 변수는 정렬될 필요가 없으므로
-            pid에 따라 idx를 바로바로 찾아가기 위해 map을 사용
-    2. total_sum
-        ===> startRace()에서 선택되지 않은 토끼의 점수에 이 점수를 한꺼번에 반영하기 위해
-    3. direction 로직
-*/
-
-struct rabbit {
-    int pid, dist, y, x, jump;
-    long long score;
-};
-// 이동할 토끼 결정할 정렬 함수
-struct selectCmp {
-    bool operator()(rabbit r1, rabbit r2) {
-        if (r1.jump != r2.jump)
-            return r1.jump > r2.jump;
-        if (r1.y + r1.x != r2.y + r2.x)
-            return r1.y + r1.x > r2.y + r2.x;
-        if (r1.y != r2.y)
-            return r1.y > r2.y;
-        if (r1.x != r2.x)
-            return r1.x > r2.x;
-        return r1.pid > r2.pid;
-    }
-};
-
-int dy[] = {-1, 1, 0, 0};
-int dx[] = {0, 0, -1, 1};
-int n, m, p;
-// total_sum: 토끼가 움직일 때마다 '행 + 열' 값을 여기에 저장함
-long long total_sum = 0;
-vector<rabbit> arr;
-// pid를 키로 하여 idx를 바로 추출하기 위한 변수
-unordered_map<int, int> pid_to_idx;
-
-bool inRange(pair<int, int> p) { return 0 <= p.first && p.first < n && 0 <= p.second && p.second < m; }
-
-// Race에 필요한 정렬 함수
-bool compare(rabbit r1, rabbit r2) {
-    if (r1.y + r1.x != r2.y + r2.x)
-        return r1.y + r1.x > r2.y + r2.x;
-    if (r1.y != r2.y)
-        return r1.y > r2.y;
-    if (r1.x != r2.x)
-        return r1.x > r2.x;
-    return r1.pid > r2.pid;
-}
-
-void rsltPos(pair<int, int> &p, int py, int px) {
-    // R(<->L): R, L, R / U(<->D): U, D, U
-    pair<int, int> tmp_p = p;
-    // 좌표가 변하지 말아야 하는 부분 설정하기
-    for (int i = 0; i < 3; i++) {
-        if (inRange({p.first + py, p.second + px})) {
-            p.first += py, p.second += px;
-            break;
-        }
-        p.first = (py < 0) ? 0 : (py > 0) ? n - 1 : p.first;
-        p.second = (px < 0) ? 0 : (px > 0) ? m - 1 : p.second;
-        py = (py < 0) ? -tmp_p.first - py : (py > 0) ? n - 1 - tmp_p.first - py : 0;
-        px = (px < 0) ? -tmp_p.second - px : (px > 0) ? m - 1 - tmp_p.second - px : 0;
-        tmp_p = p;
-    }
-}
+int n, m;
+vector<list<int>> MAP;
+// 해당 box 번호가 어느 벨트에 있는지 저장
+unordered_map<int, pair<int, int>> box_to_belt;
 
 void input() {
-    cin >> n >> m >> p;
-    for (int i = 0; i < p; i++) {
-        int pid, dist;
-        cin >> pid >> dist;
-        arr.push_back({pid, dist, 0, 0, 0, 0});
-        pid_to_idx[pid] = i;
+    cin >> n >> m;
+    MAP = vector<list<int>>(n, list<int>());
+    for (int i = 0; i < m; i++) {
+        int num;
+        cin >> num;
+        MAP[num - 1].push_back(i + 1);
+        box_to_belt[i + 1] = {num - 1, MAP[num - 1].size() - 1};
     }
 }
 
-void startRace() {
-    int k, s;
-    cin >> k >> s;
-    priority_queue<rabbit, vector<rabbit>, selectCmp> pq;
-    unordered_set<int> isPid;
-    for (auto &&i : arr)
-        pq.push(i);
+int move_to_all(int src, int dst) {
+    int sz = MAP[src].size();
+    if (!sz)
+        return MAP[dst].size();
 
-    for (int t = 0; t < k; t++) {
-        int rslt = 0;
-        rabbit r = pq.top();
-        pq.pop();
-        vector<pair<int, int>> dist_rslt(4, {r.y, r.x});
-
-        // 네 방향에 따라 이동된 위치(벽을 만나면 반대 방향으로 이동)
-        for (int i = 0; i < 4; i++)
-            rsltPos(dist_rslt[i], (dy[i] * r.dist) % (2 * n - 2), (dx[i] * r.dist) % (2 * m - 2));
-        // 위치 우선순위에 따라 이동할 위치 결정한 후 이동
-        for (int i = 1; i < 4; i++)
-            if (compare({0, 0, dist_rslt[i].first, dist_rslt[i].second, 0, 0}, {0, 0, dist_rslt[rslt].first, dist_rslt[rslt].second, 0, 0}))
-                rslt = i;
-
-        r.y = dist_rslt[rslt].first, r.x = dist_rslt[rslt].second, r.jump++;
-        // r.score는 빼는 이유: 이동한 자신은 이 점수를 받으면 안됨
-        r.score -= r.y + r.x + 2;
-        total_sum += r.y + r.x + 2;
-        isPid.insert(r.pid);
-        pq.push(r);
+    // 원래 dst에 있는 선물 상자의 box_to_belt 업데이트
+    for (auto &&i : MAP[dst])
+        box_to_belt[i].second += sz;
+    // 선물 상자 옮기기
+    for (int i = sz - 1; i >= 0; i--) {
+        int val = MAP[src].back();
+        // box_to_belt 업데이트
+        box_to_belt[val] = {dst, i};
+        MAP[dst].push_front(val);
+        MAP[src].pop_back();
     }
+    return MAP[dst].size();
+}
 
-    // 비교하기 & pq를 arr에 반영하기
-    rabbit target = {0, 0, 0, 0, 0, 0};
-    while (!pq.empty()) {
-        rabbit r = pq.top();
-        arr[pid_to_idx[r.pid]] = r;
-        pq.pop();
-        if (isPid.find(r.pid) != isPid.end() && compare(r, target))
-            target = r;
+int change_to_front(int src, int dst) {
+    int ssz = MAP[src].size(), dsz = MAP[dst].size(), val, val2;
+    if (!ssz && !dsz)
+        return dsz;
+
+    // box_to_belt 업데이트 후 선물 상자 옮기기
+    if (!ssz) {
+        for (auto &&i : MAP[dst])
+            box_to_belt[i].second--;
+        val = MAP[dst].front();
+        MAP[src].push_front(val);
+        MAP[dst].pop_front();
+        box_to_belt[val] = {src, 0};
+        dsz--;
+    } else if (!dsz) {
+        for (auto &&i : MAP[src])
+            box_to_belt[i].second--;
+        val = MAP[src].front();
+        MAP[dst].push_front(val);
+        MAP[src].pop_front();
+        box_to_belt[val] = {dst, 0};
+        dsz++;
+    } else {
+        val2 = MAP[src].front();
+        val = MAP[dst].front();
+        MAP[src].pop_front();
+        MAP[dst].pop_front();
+        MAP[src].push_front(val);
+        MAP[dst].push_front(val2);
+        box_to_belt[val] = {src, 0};
+        box_to_belt[val2] = {dst, 0};
     }
-    arr[pid_to_idx[target.pid]].score += s;
+    return dsz;
+}
+
+int divide_present(int src, int dst) {
+    int sz = MAP[src].size() / 2, val;
+    if (!sz)
+        return MAP[dst].size();
+
+    // 원래 dst에 있는 선물 상자의 box_to_belt 업데이트
+    for (auto &&i : MAP[dst])
+        box_to_belt[i].second += sz;
+    // 선물 상자 옮기기
+    list<int> tmp;
+    for (int i = 0; i < sz; i++) {
+        tmp.push_back(MAP[src].front());
+        MAP[src].pop_front();
+    }
+    for (int i = sz - 1; i >= 0; i--) {
+        val = tmp.back();
+        MAP[dst].push_front(val);
+        box_to_belt[val] = {dst, i};
+        tmp.pop_back();
+    }
+    for (auto &&i : MAP[src])
+        box_to_belt[i].second -= sz;
+    return MAP[dst].size();
+}
+
+int find_box(pair<int, int> p) {
+    for (auto &&i : box_to_belt)
+        if (i.second == p)
+            return i.first;
+    return -1;
+}
+
+int get_present(int num) {
+    pair<int, int> p = box_to_belt[num];
+    int a = (p.second - 1 < 0) ? -1 : find_box({p.first, p.second - 1});
+    int b = (p.second + 1 >= MAP[p.first].size()) ? -1 : find_box({p.first, p.second + 1});
+    return a + 2 * b;
+}
+
+int get_belt(int num) {
+    num--;
+    int c = MAP[num].size();
+    int a = (!c) ? -1 : MAP[num].front();
+    int b = (!c) ? -1 : MAP[num].back();
+    return a + 2 * b + 3 * c;
 }
 
 int main() {
@@ -130,25 +127,32 @@ int main() {
     cin >> q;
 
     for (int i = 0; i < q; i++) {
-        int cmd;
+        int cmd, src, dst, num;
         cin >> cmd;
+        if (200 <= cmd && cmd <= 400) {
+            cin >> src >> dst;
+            src--, dst--;
+        } else if (cmd == 500 || cmd == 600)
+            cin >> num;
+
         switch (cmd) {
         case 100:
             input();
             break;
         case 200:
-            startRace();
+            cout << move_to_all(src, dst) << endl;
             break;
         case 300:
-            int pid, l;
-            cin >> pid >> l;
-            arr[pid_to_idx[pid]].dist *= l;
+            cout << change_to_front(src, dst) << endl;
             break;
         case 400:
-            long long ans = -1;
-            for (auto &&i : arr)
-                ans = max(ans, i.score + total_sum);
-            cout << ans;
+            cout << divide_present(src, dst) << endl;
+            break;
+        case 500:
+            cout << get_present(num) << endl;
+            break;
+        case 600:
+            cout << get_belt(num) << endl;
             break;
         }
     }
