@@ -1,139 +1,140 @@
 #include <algorithm>
 #include <iostream>
 #include <queue>
+#include <stack>
+#include <string>
 #include <unordered_map>
+#include <unordered_set>
 using namespace std;
 
-int n, m;
-vector<vector<int>> MAP;
-// 해당 box 번호가 어느 벨트에 있는지 저장
-unordered_map<int, pair<int, int>> box_to_pos;
+// 문제 주소, 문제 id, 채점기 id
+// 대기 시작 시간: wt 초가 되었을 때 우선순위 따져서 채점 시작
+// 채점 시작 시간, 채점 끝 시간, 우선 순위
+struct problem {
+    string domain, pid;
+    int id, wt, st, et, prior;
+};
+struct compare {
+    bool operator()(problem p1, problem p2) {
+        if (p1.prior != p2.prior)
+            return p1.prior > p2.prior;
+        return p1.wt > p2.wt;
+    }
+};
+
+// 현재 Jid를 사용할 수 있는가?
+priority_queue<int, vector<int>, greater<int>> jid_arr;
+// 300 명령어(채점 시작, (domain, pq<problem>))
+unordered_map<string, priority_queue<problem, vector<problem>, compare>> waiting;
+// (domain, stack<problem>)
+unordered_map<string, stack<problem>> history;
+// 300 명령어(도메인만 모아 둠)
+unordered_set<string> j_domain, waiting_url;
+// 400 명령어(채점 종료)
+unordered_map<int, problem> judging;
 
 void input() {
-    cin >> n >> m;
-    MAP = vector<vector<int>>(n, vector<int>());
-    for (int i = 0; i < m; i++) {
-        int num;
-        cin >> num;
-        MAP[num - 1].push_back(i + 1);
-        box_to_pos[i + 1] = {num - 1, MAP[num - 1].size() - 1};
+    int n;
+    string url;
+    cin >> n >> url;
+    for (int i = 0; i < n; i++)
+        jid_arr.push(i + 1);
+
+    int pos = url.find('/');
+    string domain = url.substr(0, pos);
+    waiting[domain].push({domain, url.substr(pos + 1), 0, 0, 0, 0, 1});
+    waiting_url.insert(url);
+}
+
+void request_ans() {
+    int t, p;
+    string u;
+    cin >> t >> p >> u;
+
+    // 채점 대기열 못넣는 경우
+    if (waiting_url.find(u) != waiting_url.end())
+        return;
+    int pos = u.find('/');
+    string domain = u.substr(0, pos);
+    waiting[domain].push({domain, u.substr(pos + 1), 0, t, 0, 0, p});
+    waiting_url.insert(u);
+}
+
+void try_ans(int t, int id) {
+    problem p;
+    int min_prior = INT32_MAX;
+    int min_wt = INT32_MAX;
+    string domain = "";
+
+    for (auto &&i : waiting) {
+        p = i.second.top();
+
+        // 절대 채점이 안되는 경우
+        if (j_domain.find(p.domain) != j_domain.end())
+            continue;
+        if (history.find(p.domain) != history.end()) {
+            int start = history[p.domain].top().st;
+            int gap = history[p.domain].top().et - start;
+            if (t < start + 3 * gap)
+                continue;
+        }
+        // 우선순위 확인
+        if (p.prior < min_prior || p.prior == min_prior && p.wt < min_wt) {
+            min_prior = p.prior;
+            min_wt = p.wt;
+            domain = p.domain;
+        }
+    }
+
+    // 채점 시작하기 전에 우선 순위, 대기 시간 초기화
+    // 그리고 시작 시간 및 채점기 추가
+    if (min_prior != INT32_MAX) {
+        jid_arr.pop();
+        p = waiting[domain].top();
+        waiting[domain].pop();
+        waiting_url.erase(p.domain + '/' + p.pid);
+        if (waiting[domain].empty())
+            waiting.erase(domain);
+        p.wt = 0, p.prior = 0, p.st = t, p.id = id;
+        judging[p.id] = p, j_domain.insert(p.domain);
     }
 }
 
-int move_to_all(int src, int dst) {
-    int sz = MAP[src].size();
-    if (!sz)
-        return MAP[dst].size();
+void ans_end() {
+    int t, id;
+    cin >> t >> id;
+    if (judging.find(id) == judging.end())
+        return;
 
-    // 선물 상자 옮기기
-    for (int i = 0; i < sz; i++) {
-        MAP[dst].insert(MAP[dst].begin(), MAP[src][MAP[src].size() - 1]);
-        MAP[src].pop_back();
-    }
-
-    // box_to_pos 업데이트
-    for (int i = 0; i < MAP[dst].size(); i++)
-        box_to_pos[MAP[dst][i]] = {dst, i};
-    return MAP[dst].size();
-}
-
-int change_to_front(int src, int dst) {
-    int ssz = MAP[src].size(), dsz = MAP[dst].size();
-    if (!ssz && !dsz)
-        return MAP[dst].size();
-
-    // 선물 상자를 먼저 옮긴 뒤 box_to_pos 업데이트
-    if (!ssz) {
-        MAP[src].push_back(MAP[dst][0]);
-        MAP[dst].erase(MAP[dst].begin());
-        box_to_pos[MAP[src][0]] = {src, 0};
-        for (int i = 0; i < dsz - 1; i++)
-            box_to_pos[MAP[dst][i]] = {dst, i};
-        dsz--;
-    } else if (!dsz) {
-        MAP[dst].push_back(MAP[src][0]);
-        MAP[src].erase(MAP[src].begin());
-        box_to_pos[MAP[dst][0]] = {dst, 0};
-        for (int i = 0; i < ssz - 1; i++)
-            box_to_pos[MAP[src][i]] = {src, i};
-        dsz++;
-    } else {
-        swap(MAP[src][0], MAP[dst][0]);
-        box_to_pos[MAP[src][0]] = {src, 0};
-        box_to_pos[MAP[dst][0]] = {dst, 0};
-    }
-    return dsz;
-}
-
-int divide_present(int src, int dst) {
-    int sz = MAP[src].size() / 2;
-    if (!sz)
-        return MAP[dst].size();
-
-    // 선물 상자 옮기기
-    for (int i = sz - 1; i >= 0; i--) {
-        MAP[dst].insert(MAP[dst].begin(), MAP[src][i]);
-        MAP[src].erase(MAP[src].begin() + i);
-    }
-
-    // box_to_pos 업데이트(src)
-    for (int i = 0; i < MAP[src].size(); i++)
-        box_to_pos[MAP[src][i]] = {src, i};
-    // box_to_pos 업데이트(dst)
-    for (int i = 0; i < MAP[dst].size(); i++)
-        box_to_pos[MAP[dst][i]] = {dst, i};
-    return MAP[dst].size();
-}
-
-int get_present(int num) {
-    pair<int, int> p = box_to_pos[num];
-    int a = (p.second - 1 < 0) ? -1 : MAP[p.first][p.second - 1];
-    int b = (p.second + 1 >= MAP[p.first].size()) ? -1 : MAP[p.first][p.second + 1];
-    return a + 2 * b;
-}
-
-int get_belt(int num) {
-    vector<int> arr = MAP[--num];
-    int c = arr.size();
-    int a = (!c) ? -1 : arr[0];
-    int b = (!c) ? -1 : arr[c - 1];
-    return a + 2 * b + 3 * c;
+    problem p = judging[id];
+    p.et = t, history[p.domain].push(p);
+    judging.erase(id), j_domain.erase(p.domain);
+    jid_arr.push(id);
 }
 
 int main() {
-    // freopen("./input.txt", "r", stdin);
+    freopen("./input.txt", "r", stdin);
     int q;
     cin >> q;
 
     for (int i = 0; i < q; i++) {
-        int cmd, src, dst, num;
+        int cmd, t;
         cin >> cmd;
-        if (200 <= cmd && cmd <= 400) {
-            cin >> src >> dst;
-            src--, dst--;
-        } else if (cmd == 500 || cmd == 600)
-            cin >> num;
-
-        switch (cmd) {
-        case 100:
+        if (cmd == 100)
             input();
-            break;
-        case 200:
-            cout << move_to_all(src, dst) << endl;
-            break;
-        case 300:
-            cout << change_to_front(src, dst) << endl;
-            break;
-        case 400:
-            cout << divide_present(src, dst) << endl;
-            break;
-        case 500:
-            cout << get_present(num) << endl;
-            break;
-        case 600:
-            cout << get_belt(num) << endl;
-            break;
+        else if (cmd == 200)
+            request_ans();
+        else if (cmd == 300) {
+            cin >> t;
+            if (!jid_arr.empty() && !waiting.empty())
+                try_ans(t, jid_arr.top());
+        } else if (cmd == 400)
+            ans_end();
+        else if (cmd == 500) {
+            cin >> t;
+            cout << waiting_url.size() << endl;
         }
     }
+
     return 0;
 }
