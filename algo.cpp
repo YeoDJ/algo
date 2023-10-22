@@ -1,140 +1,176 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <algorithm>
 #include <iostream>
 #include <queue>
-#include <stack>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
 using namespace std;
 
-// 문제 주소, 문제 id, 채점기 id
-// 대기 시작 시간: wt 초가 되었을 때 우선순위 따져서 채점 시작
-// 채점 시작 시간, 채점 끝 시간, 우선 순위
-struct problem {
-    string domain, pid;
-    int id, wt, st, et, prior;
-};
-struct compare {
-    bool operator()(problem p1, problem p2) {
-        if (p1.prior != p2.prior)
-            return p1.prior > p2.prior;
-        return p1.wt > p2.wt;
-    }
-};
+// 빈 칸, 머리, 몸통, 꼬리, 이동 선
+int dy[] = {0, -1, 0, 1};
+int dx[] = {1, 0, -1, 0};
+int n, m, k, ans = 0, Round = -1;
+vector<vector<int>> MAP;
+vector<pair<int, int>> head;
+vector<vector<pair<int, int>>> arr;
+// 꽉 차 있는 그룹인가?
+vector<bool> isFull;
 
-// 현재 Jid를 사용할 수 있는가?
-priority_queue<int, vector<int>, greater<int>> jid_arr;
-// 300 명령어(채점 시작, (domain, pq<problem>))
-unordered_map<string, priority_queue<problem, vector<problem>, compare>> waiting;
-// (domain, stack<problem>)
-unordered_map<string, stack<problem>> history;
-// 300 명령어(도메인만 모아 둠)
-unordered_set<string> j_domain, waiting_url;
-// 400 명령어(채점 종료)
-unordered_map<int, problem> judging;
+bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
+
+void update_point() {
+    for (int i = 0; i < head.size(); i++) {
+        int y, x, j;
+        pair<int, int> cur = head[i], tmp;
+        arr[i].clear();
+        arr[i].push_back(cur);
+
+        while (MAP[cur.first][cur.second] != 3) {
+            for (j = 0; j < 4; j++) {
+                y = cur.first + dy[j];
+                x = cur.second + dx[j];
+                if (inRange(y, x) && (MAP[y][x] == 2 || MAP[y][x] == 3) && find(arr[i].begin(), arr[i].end(), make_pair(y, x)) == arr[i].end()) {
+                    tmp = {y, x};
+                    // 몸통이면 바로 Snake 요소에 반영(최우선순위)
+                    if (MAP[y][x] == 2) {
+                        arr[i].push_back(tmp);
+                        break;
+                    }
+                }
+            }
+            // 꼬리라면 Snake 요소에 반영
+            if (j == 4)
+                arr[i].push_back(tmp);
+            cur = tmp;
+        }
+    }
+}
 
 void input() {
-    int n;
-    string url;
-    cin >> n >> url;
-    for (int i = 0; i < n; i++)
-        jid_arr.push(i + 1);
+    cin >> n >> m >> k;
+    MAP = vector<vector<int>>(n, vector<int>(n));
 
-    int pos = url.find('/');
-    string domain = url.substr(0, pos);
-    waiting[domain].push({domain, url.substr(pos + 1), 0, 0, 0, 0, 1});
-    waiting_url.insert(url);
+    // MAP 입력 및 HEAD 선언
+    for (int y = 0; y < n; y++)
+        for (int x = 0; x < n; x++) {
+            cin >> MAP[y][x];
+            if (MAP[y][x] == 1)
+                head.push_back({y, x});
+        }
+
+    // SNAKE 정보 얻기
+    int sz = head.size();
+    arr = vector<vector<pair<int, int>>>(sz);
+    isFull = vector<bool>(sz);
+    update_point();
+
+    for (int i = 0; i < sz; i++) {
+        int j = arr[i].size() - 1;
+        pair<int, int> tmp = {abs(arr[i][0].first - arr[i][j].first), abs(arr[i][0].second - arr[i][j].second)};
+        isFull[i] = tmp == make_pair(1, 0) || tmp == make_pair(0, 1);
+    }
 }
 
-void request_ans() {
-    int t, p;
-    string u;
-    cin >> t >> p >> u;
-
-    // 채점 대기열 못넣는 경우
-    if (waiting_url.find(u) != waiting_url.end())
-        return;
-    int pos = u.find('/');
-    string domain = u.substr(0, pos);
-    waiting[domain].push({domain, u.substr(pos + 1), 0, t, 0, 0, p});
-    waiting_url.insert(u);
+pair<int, int> find_next(pair<int, int> h) {
+    // MAP 밖이거나 그룹원이 없는 길일 때
+    if (!inRange(h.first, h.second) || MAP[h.first][h.second] == 4)
+        return make_pair(-1, -1);
+    for (int i = 0; i < 4; i++) {
+        int y = h.first + dy[i];
+        int x = h.second + dx[i];
+        if (inRange(y, x) && (MAP[y][x] == 2 || MAP[y][x] == 3))
+            return make_pair(y, x);
+    }
+    return make_pair(-1, -1);
 }
 
-void try_ans(int t, int id) {
-    problem p;
-    int min_prior = INT32_MAX;
-    int min_wt = INT32_MAX;
-    string domain = "";
-
-    for (auto &&i : waiting) {
-        p = i.second.top();
-
-        // 절대 채점이 안되는 경우
-        if (j_domain.find(p.domain) != j_domain.end())
+void move() {
+    for (int i = 0; i < head.size(); i++) {
+        int y, x, j;
+        pair<int, int> prev_p = {-1, -1}, cur_p = head[i], next_p = find_next(head[i]), tmp;
+        // 꽉 찬 그룹일 때
+        if (isFull[i]) {
+            prev_p = arr[i][0];
+            cur_p = arr[i][arr[i].size() - 1];
+            for (j = 0; j < 4; j++) {
+                y = cur_p.first + dy[j];
+                x = cur_p.second + dx[j];
+                // 꼬리 이전의 몸통을 찾은 뒤
+                if (inRange(y, x) && MAP[y][x] == 2) {
+                    next_p = {y, x};
+                    break;
+                }
+            }
+            // MAP에 반영한다.
+            swap(MAP[cur_p.first][cur_p.second], MAP[next_p.first][next_p.second]);
+            swap(MAP[prev_p.first][prev_p.second], MAP[cur_p.first][cur_p.second]);
+            head[i] = cur_p;
             continue;
-        if (history.find(p.domain) != history.end()) {
-            int start = history[p.domain].top().st;
-            int gap = history[p.domain].top().et - start;
-            if (t < start + 3 * gap)
-                continue;
         }
-        // 우선순위 확인
-        if (p.prior < min_prior || p.prior == min_prior && p.wt < min_wt) {
-            min_prior = p.prior;
-            min_wt = p.wt;
-            domain = p.domain;
-        }
-    }
 
-    // 채점 시작하기 전에 우선 순위, 대기 시간 초기화
-    // 그리고 시작 시간 및 채점기 추가
-    if (min_prior != INT32_MAX) {
-        jid_arr.pop();
-        p = waiting[domain].top();
-        waiting[domain].pop();
-        waiting_url.erase(p.domain + '/' + p.pid);
-        if (waiting[domain].empty())
-            waiting.erase(domain);
-        p.wt = 0, p.prior = 0, p.st = t, p.id = id;
-        judging[p.id] = p, j_domain.insert(p.domain);
+        // prev_p 초기 세팅
+        for (j = 0; j < 4; j++) {
+            y = cur_p.first + dy[j];
+            x = cur_p.second + dx[j];
+            if (inRange(y, x) && (MAP[y][x] == 2 || MAP[y][x] == 4)) {
+                tmp = {y, x};
+                if (MAP[y][x] == 4) {
+                    head[i] = {y, x};
+                    swap(MAP[y][x], MAP[cur_p.first][cur_p.second]);
+                    prev_p = cur_p, cur_p = next_p;
+                    next_p = find_next(cur_p);
+                    break;
+                }
+            }
+        }
+
+        // 좌표 반영
+        while (1) {
+            swap(MAP[prev_p.first][prev_p.second], MAP[cur_p.first][cur_p.second]);
+            if (next_p == make_pair(-1, -1))
+                break;
+            prev_p = cur_p, cur_p = next_p;
+            next_p = find_next(cur_p);
+        }
     }
 }
 
-void ans_end() {
-    int t, id;
-    cin >> t >> id;
-    if (judging.find(id) == judging.end())
-        return;
-
-    problem p = judging[id];
-    p.et = t, history[p.domain].push(p);
-    judging.erase(id), j_domain.erase(p.domain);
-    jid_arr.push(id);
+bool throw_ball(int dir, int line) {
+    // 4의 배수 별로 Round를 어떻게 진행할 것인지 설정한다.
+    int y = (dir == 1) ? n - 1 : (dir == 2) ? n - 1 - line : (dir == 3) ? 0 : line;
+    int x = (dir == 1) ? line : (dir == 2) ? n - 1 : (dir == 3) ? n - 1 - line : 0;
+    for (int i = 0; i < n; i++) {
+        if (1 <= MAP[y][x] && MAP[y][x] <= 3) {
+            int idx = 0;
+            for (auto &&j : arr) {
+                auto it = find(j.begin(), j.end(), make_pair(y, x));
+                if (it != j.end()) {
+                    // 그룹원이 닿이면 점수를 얻고,
+                    ans += (distance(j.begin(), it) + 1) * (distance(j.begin(), it) + 1);
+                    // 그룹의 순서를 뒤집는다.
+                    reverse(j.begin(), j.end());
+                    head[idx] = j[0];
+                    MAP[j[0].first][j[0].second] = 1;
+                    MAP[j[j.size() - 1].first][j[j.size() - 1].second] = 3;
+                    return true;
+                }
+                idx++;
+            }
+        }
+        y += dy[dir], x += dx[dir];
+    }
+    return false;
 }
 
 int main() {
     freopen("./input.txt", "r", stdin);
-    int q;
-    cin >> q;
+    input();
 
-    for (int i = 0; i < q; i++) {
-        int cmd, t;
-        cin >> cmd;
-        if (cmd == 100)
-            input();
-        else if (cmd == 200)
-            request_ans();
-        else if (cmd == 300) {
-            cin >> t;
-            if (!jid_arr.empty() && !waiting.empty())
-                try_ans(t, jid_arr.top());
-        } else if (cmd == 400)
-            ans_end();
-        else if (cmd == 500) {
-            cin >> t;
-            cout << waiting_url.size() << endl;
-        }
+    for (int i = 0; i < k; i++) {
+        move();
+        update_point();
+        Round = (Round == 4 * n - 1) ? 0 : Round + 1;
+        throw_ball(Round / n, Round % n);
     }
 
+    cout << ans;
     return 0;
 }
