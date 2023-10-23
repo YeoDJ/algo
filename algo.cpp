@@ -2,6 +2,7 @@
 #include <iostream>
 #include <map>
 #include <queue>
+#include <set>
 #include <unordered_map>
 #define DONT_MIN                                                                                                                                                                                       \
     if (min_len == INT32_MAX)                                                                                                                                                                          \
@@ -14,8 +15,9 @@ int n, m, p, c, d;
 pair<int, int> deer;            // 루돌프 위치
 vector<vector<int>> MAP;        // 지도
 map<int, pair<int, int>> santa; // 산타 위치
+set<int> set_santa;             // 산타 목록
 unordered_map<int, int> stun;   // 산타 스턴 여부(스턴 시간 2초)
-unordered_map<int, int> score;  // 산타 점수
+map<int, int> score;            // 산타 점수
 
 bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
 
@@ -47,16 +49,27 @@ void input() {
         cin >> pn >> y >> x;
         santa[pn] = {--y, --x};
         stun[pn] = score[pn] = 0;
+        set_santa.insert(pn);
     }
     update();
 }
 
-void interaction(pair<int, int> cur_p, int pn, int dir) {}
+void interaction(pair<int, int> cur_p, int dir) {
+    while (1) {
+        int pn = MAP[cur_p.first][cur_p.second];
+        cur_p.first += dy[dir], cur_p.second += dx[dir];
+        santa[pn] = cur_p;
+        if (!inRange(cur_p.first, cur_p.second) || !MAP[cur_p.first][cur_p.second]) {
+            if (!inRange(cur_p.first, cur_p.second))
+                santa.erase(pn), stun.erase(pn);
+            return;
+        }
+    }
+}
 
 void hit(pair<int, int> next_p, int pn, int dir, int power) {
     deer = next_p;
     score[pn] += power;
-    dir += (dir <= 3) ? 4 : -4;
     int y = next_p.first + dy[dir] * power;
     int x = next_p.second + dx[dir] * power;
 
@@ -68,8 +81,8 @@ void hit(pair<int, int> next_p, int pn, int dir, int power) {
 
     // 산타를 옮긴 뒤 스턴을 건다.
     santa[pn] = {y, x}, stun[pn] = 2;
-    if (MAP[y][x])
-        interaction({y, x}, pn, dir);
+    if (MAP[y][x] > 0 && MAP[y][x] != pn)
+        interaction({y, x}, dir);
 }
 
 void move_deer() {
@@ -101,14 +114,19 @@ void move_deer() {
     }
     DONT_MIN;
 
-    // 충돌했는가?
-    (next_deer == santa[target]) ? hit(next_deer, target, dir, c) : deer = next_deer;
+    // 산타와 충돌
+    if (next_deer == santa[target])
+        hit(next_deer, target, dir, c);
+    else
+        deer = next_deer;
     update();
 }
 
 void move_santa(int pn) {
+    // min_len에 지금 당장의 거리를 구한다
+    // 구하는 이유: 가까워지는지 확인하기 위해
     int y, x, dir;
-    int min_len = INT32_MAX, len;
+    int min_len = find_len(santa[pn], deer), len;
     pair<int, int> next_santa = santa[pn];
 
     // 루돌프와 가장 가까운 곳으로 산타 보내기
@@ -122,10 +140,14 @@ void move_santa(int pn) {
             dir = i;
         }
     }
-    DONT_MIN;
+    if (min_len == find_len(santa[pn], deer))
+        return;
 
-    // 충돌했는가?
-    (next_santa == deer) ? hit(next_santa, pn, dir, d) : santa[pn] = next_santa;
+    // 루돌프와 충돌
+    if (next_santa == deer)
+        hit(next_santa, pn, (dir <= 3) ? dir + 4 : dir - 4, d);
+    else
+        santa[pn] = next_santa;
     update();
 }
 
@@ -145,13 +167,15 @@ int main() {
     while (m-- && !santa.empty()) {
         // 루돌프와 산타 움직이기
         move_deer();
-        for (auto &&i : santa)
-            if (!stun[distance(santa.begin(), find(santa.begin(), santa.end(), i))])
-                move_santa(i.first);
+        for (auto &&i : set_santa)
+            if (santa.find(i) != santa.end() && !stun[i])
+                move_santa(i);
+
         debug();
         // stun 업데이트
         for (auto &&i : stun)
-            i.second--;
+            if (i.second)
+                i.second--;
         // 점수 업데이트
         for (auto &&i : score)
             if (santa.find(i.first) != santa.end())
