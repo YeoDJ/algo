@@ -1,176 +1,171 @@
-#define _CRT_SECURE_NO_WARNINGS
-#include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <map>
 #include <queue>
+#include <unordered_map>
+#define DONT_MIN                                                                                                                                                                                       \
+    if (min_len == INT32_MAX)                                                                                                                                                                          \
+    return
 using namespace std;
 
-// 빈 칸, 머리, 몸통, 꼬리, 이동 선
-int dy[] = {0, -1, 0, 1};
-int dx[] = {1, 0, -1, 0};
-int n, m, k, ans = 0, Round = -1;
-vector<vector<int>> MAP;
-vector<pair<int, int>> head;
-vector<vector<pair<int, int>>> arr;
-// 꽉 차 있는 그룹인가?
-vector<bool> isFull;
+int dy[] = {-1, -1, 0, 1, 1, 1, 0, -1};
+int dx[] = {0, 1, 1, 1, 0, -1, -1, -1};
+int n, m, p, c, d;
+pair<int, int> deer;            // ?絹?? ???
+vector<vector<int>> MAP;        // ????
+map<int, pair<int, int>> santa; // ????? ???
+unordered_map<int, int> stun;   // ??? ???? ?ð?(?? 2??)
+unordered_map<int, int> score;  // ??? ????
 
 bool inRange(int y, int x) { return 0 <= y && y < n && 0 <= x && x < n; }
 
-void update_point() {
-    for (int i = 0; i < head.size(); i++) {
-        int y, x, j;
-        pair<int, int> cur = head[i], tmp;
-        arr[i].clear();
-        arr[i].push_back(cur);
+int find_len(pair<int, int> p1, pair<int, int> p2) { return pow(p1.first - p2.first, 2) + pow(p1.second - p2.second, 2); }
 
-        while (MAP[cur.first][cur.second] != 3) {
-            for (j = 0; j < 4; j++) {
-                y = cur.first + dy[j];
-                x = cur.second + dx[j];
-                if (inRange(y, x) && (MAP[y][x] == 2 || MAP[y][x] == 3) && find(arr[i].begin(), arr[i].end(), make_pair(y, x)) == arr[i].end()) {
-                    tmp = {y, x};
-                    // 몸통이면 바로 Snake 요소에 반영(최우선순위)
-                    if (MAP[y][x] == 2) {
-                        arr[i].push_back(tmp);
-                        break;
-                    }
-                }
-            }
-            // 꼬리라면 Snake 요소에 반영
-            if (j == 4)
-                arr[i].push_back(tmp);
-            cur = tmp;
-        }
-    }
+bool compare(pair<int, int> p1, pair<int, int> p2) {
+    int len1 = find_len(deer, p1);
+    int len2 = find_len(deer, p2);
+    if (len1 != len2)
+        return len1 < len2;
+    if (p1.first != p2.first)
+        return p1.first > p2.first;
+    return p1.second > p2.second;
+}
+
+void update() {
+    MAP = vector<vector<int>>(n, vector<int>(n, 0));
+    MAP[deer.first][deer.second] = -1;
+    for (auto &&i : santa)
+        MAP[i.second.first][i.second.second] = i.first;
 }
 
 void input() {
-    cin >> n >> m >> k;
-    MAP = vector<vector<int>>(n, vector<int>(n));
-
-    // MAP 입력 및 HEAD 선언
-    for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++) {
-            cin >> MAP[y][x];
-            if (MAP[y][x] == 1)
-                head.push_back({y, x});
-        }
-
-    // SNAKE 정보 얻기
-    int sz = head.size();
-    arr = vector<vector<pair<int, int>>>(sz);
-    isFull = vector<bool>(sz);
-    update_point();
-
-    for (int i = 0; i < sz; i++) {
-        int j = arr[i].size() - 1;
-        pair<int, int> tmp = {abs(arr[i][0].first - arr[i][j].first), abs(arr[i][0].second - arr[i][j].second)};
-        isFull[i] = tmp == make_pair(1, 0) || tmp == make_pair(0, 1);
+    cin >> n >> m >> p >> c >> d;
+    cin >> deer.first >> deer.second;
+    --deer.first, --deer.second;
+    for (int i = 0; i < p; i++) {
+        int pn, y, x;
+        cin >> pn >> y >> x;
+        santa[pn] = {--y, --x};
+        stun[pn] = score[pn] = 0;
     }
+    update();
 }
 
-pair<int, int> find_next(pair<int, int> h) {
-    // MAP 밖이거나 그룹원이 없는 길일 때
-    if (!inRange(h.first, h.second) || MAP[h.first][h.second] == 4)
-        return make_pair(-1, -1);
-    for (int i = 0; i < 4; i++) {
-        int y = h.first + dy[i];
-        int x = h.second + dx[i];
-        if (inRange(y, x) && (MAP[y][x] == 2 || MAP[y][x] == 3))
-            return make_pair(y, x);
-    }
-    return make_pair(-1, -1);
+void interaction(pair<int, int> cur_p, int pn, int dir) {
+
 }
 
-void move() {
-    for (int i = 0; i < head.size(); i++) {
-        int y, x, j;
-        pair<int, int> prev_p = {-1, -1}, cur_p = head[i], next_p = find_next(head[i]), tmp;
-        // 꽉 찬 그룹일 때
-        if (isFull[i]) {
-            prev_p = arr[i][0];
-            cur_p = arr[i][arr[i].size() - 1];
-            for (j = 0; j < 4; j++) {
-                y = cur_p.first + dy[j];
-                x = cur_p.second + dx[j];
-                // 꼬리 이전의 몸통을 찾은 뒤
-                if (inRange(y, x) && MAP[y][x] == 2) {
-                    next_p = {y, x};
-                    break;
-                }
-            }
-            // MAP에 반영한다.
-            swap(MAP[cur_p.first][cur_p.second], MAP[next_p.first][next_p.second]);
-            swap(MAP[prev_p.first][prev_p.second], MAP[cur_p.first][cur_p.second]);
-            head[i] = cur_p;
-            continue;
-        }
+bool hit(pair<int, int> next_p, int pn, int &dir, int power) {
+    deer = next_p;
+    score[pn] += power;
+    dir += (dir <= 3) ? 4 : -4;
+    int y = next_p.first + dy[dir] * power;
+    int x = next_p.second + dx[dir] * power;
 
-        // prev_p 초기 세팅
-        for (j = 0; j < 4; j++) {
-            y = cur_p.first + dy[j];
-            x = cur_p.second + dx[j];
-            if (inRange(y, x) && (MAP[y][x] == 2 || MAP[y][x] == 4)) {
-                tmp = {y, x};
-                if (MAP[y][x] == 4) {
-                    head[i] = {y, x};
-                    swap(MAP[y][x], MAP[cur_p.first][cur_p.second]);
-                    prev_p = cur_p, cur_p = next_p;
-                    next_p = find_next(cur_p);
-                    break;
-                }
-            }
-        }
-
-        // 좌표 반영
-        while (1) {
-            swap(MAP[prev_p.first][prev_p.second], MAP[cur_p.first][cur_p.second]);
-            if (next_p == make_pair(-1, -1))
-                break;
-            prev_p = cur_p, cur_p = next_p;
-            next_p = find_next(cur_p);
-        }
+    // ????? ???? ?????? ??????? MAP???? ??????.
+    if (!inRange(y, x)) {
+        santa.erase(pn), stun.erase(pn);
+        return false;
     }
+
+    // ?浹?? ????? ?????? ?????? ?????.
+    santa[pn] = {y, x}, stun[pn] = 2;
+    return MAP[y][x];
 }
 
-bool throw_ball(int dir, int line) {
-    // 4의 배수 별로 Round를 어떻게 진행할 것인지 설정한다.
-    int y = (dir == 1) ? n - 1 : (dir == 2) ? n - 1 - line : (dir == 3) ? 0 : line;
-    int x = (dir == 1) ? line : (dir == 2) ? n - 1 : (dir == 3) ? n - 1 - line : 0;
+void move_deer() {
+    int y, x, dir;
+    int min_len = INT32_MAX, len, target = -1;
+    pair<int, int> next_deer = deer;
+
+    // ????? ???? ????? ??? ?????
+    for (auto &&i : santa) {
+        len = find_len(deer, i.second);
+        if (len <= min_len) {
+            min_len = len;
+            if (target == -1 || compare(i.second, santa[target]))
+                target = i.first;
+        }
+    }
+    DONT_MIN;
+
+    // ?絹?? ???
+    min_len = INT32_MAX;
+    for (int i = 0; i < 8; i++) {
+        y = deer.first + dy[i], x = deer.second + dx[i];
+        len = find_len({y, x}, santa[target]);
+        if (inRange(y, x) && len < min_len) {
+            min_len = len;
+            next_deer = {y, x};
+            dir = i;
+        }
+    }
+    DONT_MIN;
+
+    // ?浹??°??
+    if (next_deer == santa[target] && hit(next_deer, target, dir, c))
+        interaction(next_deer, target, dir);
+    else if (next_deer != deer && next_deer != deer)
+        deer = next_deer;
+    update();
+}
+
+void move_santa(int pn) {
+    int y, x, dir;
+    int min_len = INT32_MAX, len;
+    pair<int, int> next_santa = santa[pn];
+
+    // ??? ??????
+    for (int i = 0; i < 8; i += 2) {
+        y = santa[pn].first + dy[i];
+        x = santa[pn].second + dx[i];
+        len = find_len({y, x}, deer);
+        if (inRange(y, x) && MAP[y][x] <= 0 && len < min_len) {
+            min_len = len;
+            next_santa = {y, x};
+            dir = i;
+        }
+    }
+    DONT_MIN;
+
+    // ?浹??°??
+    if (next_santa == deer && hit(next_santa, pn, dir, d))
+        interaction(next_santa, pn, dir);
+    else if (next_santa != deer && next_santa != santa[pn])
+        santa[pn] = next_santa;
+    update();
+}
+
+void debug() {
     for (int i = 0; i < n; i++) {
-        if (1 <= MAP[y][x] && MAP[y][x] <= 3) {
-            int idx = 0;
-            for (auto &&j : arr) {
-                auto it = find(j.begin(), j.end(), make_pair(y, x));
-                if (it != j.end()) {
-                    // 그룹원이 닿이면 점수를 얻고,
-                    ans += (distance(j.begin(), it) + 1) * (distance(j.begin(), it) + 1);
-                    // 그룹의 순서를 뒤집는다.
-                    reverse(j.begin(), j.end());
-                    head[idx] = j[0];
-                    MAP[j[0].first][j[0].second] = 1;
-                    MAP[j[j.size() - 1].first][j[j.size() - 1].second] = 3;
-                    return true;
-                }
-                idx++;
-            }
-        }
-        y += dy[dir], x += dx[dir];
+        for (auto &&j : MAP[i])
+            cout << j << ' ';
+        cout << endl;
     }
-    return false;
+    cout << endl;
 }
 
 int main() {
     freopen("./input.txt", "r", stdin);
     input();
 
-    for (int i = 0; i < k; i++) {
-        move();
-        update_point();
-        Round = (Round == 4 * n - 1) ? 0 : Round + 1;
-        throw_ball(Round / n, Round % n);
+    while (m-- && !santa.empty()) {
+        // ?絹???? ??? ???????
+        move_deer();
+        for (auto &&i : santa)
+            if (!stun[distance(santa.begin(), find(santa.begin(), santa.end(), i))])
+                move_santa(i.first);
+        debug();
+        // stun ????ð? ???????
+        for (auto &&i : stun)
+            i.second--;
+        // ???? ???????
+        for (auto &&i : score)
+            if (santa.find(i.first) != santa.end())
+                i.second++;
     }
 
-    cout << ans;
+    for (auto &&i : score)
+        cout << i.second << ' ';
     return 0;
 }
