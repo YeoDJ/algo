@@ -51,11 +51,9 @@ void input() {
     update();
 }
 
-void interaction(pair<int, int> cur_p, int pn, int dir) {
+void interaction(pair<int, int> cur_p, int pn, int dir) {}
 
-}
-
-bool hit(pair<int, int> next_p, int pn, int &dir, int power) {
+void hit(pair<int, int> next_p, int pn, int dir, int power) {
     deer = next_p;
     score[pn] += power;
     dir += (dir <= 3) ? 4 : -4;
@@ -65,12 +63,13 @@ bool hit(pair<int, int> next_p, int pn, int &dir, int power) {
     // 산타가 격자 밖으로 나가면 지도에서 제외됨
     if (!inRange(y, x)) {
         santa.erase(pn), stun.erase(pn);
-        return false;
+        return;
     }
 
     // 산타를 옮긴 뒤 스턴을 건다.
     santa[pn] = {y, x}, stun[pn] = 2;
-    return MAP[y][x];
+    if (MAP[y][x])
+        interaction({y, x}, pn, dir);
 }
 
 void move_deer() {
@@ -103,10 +102,7 @@ void move_deer() {
     DONT_MIN;
 
     // 충돌했는가?
-    if (next_deer == santa[target] && hit(next_deer, target, dir, c))
-        interaction(next_deer, target, dir);
-    else if (next_deer != deer && next_deer != deer)
-        deer = next_deer;
+    (next_deer == santa[target]) ? hit(next_deer, target, dir, c) : deer = next_deer;
     update();
 }
 
@@ -129,10 +125,7 @@ void move_santa(int pn) {
     DONT_MIN;
 
     // 충돌했는가?
-    if (next_santa == deer && hit(next_santa, pn, dir, d))
-        interaction(next_santa, pn, dir);
-    else if (next_santa != deer && next_santa != santa[pn])
-        santa[pn] = next_santa;
+    (next_santa == deer) ? hit(next_santa, pn, dir, d) : santa[pn] = next_santa;
     update();
 }
 
